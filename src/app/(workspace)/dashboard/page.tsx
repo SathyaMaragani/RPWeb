@@ -110,7 +110,9 @@ export default async function DashboardPage() {
             <QuoteCard>Stories · People · Worlds · Together</QuoteCard>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          {/* Four across only on wide screens: monospace titles like "Character"
+              are wider than a quarter of a medium-sized hero. */}
+          <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
             {ACTIONS.map((a) => (
               <Link
                 key={a.href}
