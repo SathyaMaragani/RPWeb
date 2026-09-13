@@ -20,7 +20,7 @@ export default async function WorkspaceLayout({
   const character = await prisma.character.findFirst({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, avatarUrl: true, avatarUpdatedAt: true },
+    select: { id: true, name: true, avatarUrl: true, avatarUpdatedAt: true, appearanceUpdatedAt: true },
   })
 
   return (

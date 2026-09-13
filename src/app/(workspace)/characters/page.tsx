@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Plus, Users } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { requireUserId } from "@/server/auth-guards"
-import { characterColor, avatarSrc } from "@/lib/characters"
+import { characterColor, avatarSrc, portraitSrc } from "@/lib/characters"
 import { PageHeader } from "@/components/layout/PageHeader"
 import CharacterGallery from "./CharacterGallery"
 
@@ -47,6 +47,7 @@ export default async function CharactersPage() {
           bio: c.bio,
           color: characterColor(c),
           avatar: avatarSrc(c),
+          portrait: portraitSrc(c),
           mine: c.userId === userId,
           createdAt: c.createdAt.toISOString(),
           worlds: c.worlds.map((w) => w.world),

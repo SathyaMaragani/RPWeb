@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
-import { Eye, Pencil, Search, Users, X } from "lucide-react"
+import { Eye, Pencil, Search, Users, Wand2, X } from "lucide-react"
 
 export type GalleryCharacter = {
   id: string
@@ -11,6 +11,8 @@ export type GalleryCharacter = {
   bio: string | null
   color: string
   avatar: string | null
+  /** The full designed figure, when they have one. */
+  portrait: string | null
   /** Created by the viewer, as opposed to shared with them through a world. */
   mine: boolean
   createdAt: string
@@ -155,13 +157,21 @@ export default function CharacterGallery({ characters }: { characters: GalleryCh
                   ))}
                 </div>
 
-                <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-                  <button type="button" onClick={() => view(c)} className={button}>
-                    <Eye size={14} /> View
-                  </button>
-                  <Link href={`/characters/${c.id}/edit`} className={button}>
-                    <Pencil size={14} /> Edit
+                <div className="mt-auto space-y-2 pt-4">
+                  <Link
+                    href={`/characters/${c.id}/customize`}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-accent/50 bg-accent/15 py-2 text-sm text-ink transition hover:bg-accent/30"
+                  >
+                    <Wand2 size={14} /> {c.portrait ? "Change look" : "Design look"}
                   </Link>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => view(c)} className={button}>
+                      <Eye size={14} /> View
+                    </button>
+                    <Link href={`/characters/${c.id}/edit`} className={button}>
+                      <Pencil size={14} /> Edit
+                    </Link>
+                  </div>
                 </div>
               </div>
             </article>
@@ -178,7 +188,17 @@ export default function CharacterGallery({ characters }: { characters: GalleryCh
         {viewing && (
           <div>
             <div className="relative">
-              <Portrait character={viewing} className="aspect-square" />
+              {viewing.portrait ? (
+                <div
+                  className="flex h-[52vh] justify-center pt-4"
+                  style={{ background: `radial-gradient(circle at 50% 40%, ${viewing.color}33, transparent 70%)` }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={viewing.portrait} alt={viewing.name} className="h-full w-auto" />
+                </div>
+              ) : (
+                <Portrait character={viewing} className="aspect-square" />
+              )}
               <button
                 type="button"
                 onClick={() => dialogRef.current?.close()}

@@ -35,6 +35,12 @@ model Character {
   /// Accent colour as #rrggbb. Falls back to a hue derived from the id.
   color           String?
   title           String?
+  /// A designed look: which catalogue asset fills each slot, in which colours.
+  /// The configuration is the source of truth; pictures are drawn from it.
+  appearance      Json?
+  /// Set whenever the design is saved. Versions the portrait URL, and decides
+  /// between the design and an uploaded avatar: whichever is newer shows.
+  appearanceUpdatedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

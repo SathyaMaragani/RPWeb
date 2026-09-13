@@ -84,6 +84,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
         name: m.character.name,
         avatarUrl: m.character.avatarUrl,
         bio: m.character.bio,
+        appearance: m.character.appearance,
         role: m.role,
         playedBy: m.user.name,
       })),

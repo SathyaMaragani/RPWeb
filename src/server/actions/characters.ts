@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireUserId, requireEditableCharacter } from "@/server/auth-guards"
 import { normalizeColor, parseDataUrl } from "@/lib/characters"
+import { normalizeAppearance } from "@/lib/appearance"
 
 function readCharacterForm(formData: FormData) {
   const name = (formData.get("name") as string | null)?.trim()
@@ -61,11 +62,37 @@ export async function createCharacter(formData: FormData) {
   const character = await prisma.character.create({
     data: { userId, ...data },
   })
-  await applyAvatarImage(character.id, formData.get("avatarImage"))
+  const upload = formData.get("avatarImage")
+  await applyAvatarImage(character.id, upload)
 
   revalidatePath("/dashboard")
   revalidatePath("/characters")
-  redirect("/characters")
+  // Someone who gave no picture goes straight on to design one.
+  redirect(upload || data.avatarUrl ? "/characters" : `/characters/${character.id}/customize`)
+}
+
+/**
+ * Saves a designed look. The payload is rebuilt from the catalogue before it
+ * is stored, so only known asset ids and hex colours are ever kept.
+ */
+export async function saveAppearance(characterId: string, appearance: unknown) {
+  const userId = await requireUserId()
+  await requireEditableCharacter(userId, characterId)
+
+  const now = new Date()
+  await prisma.character.update({
+    where: { id: characterId },
+    data: {
+      appearance: normalizeAppearance(appearance),
+      appearanceUpdatedAt: now,
+    },
+  })
+
+  revalidatePath("/characters")
+  revalidatePath("/dashboard")
+  // The portrait is the avatar everywhere the character appears.
+  revalidatePath("/worlds", "layout")
+  return { savedAt: now.toISOString() }
 }
 
 export async function editCharacter(characterId: string, formData: FormData) {

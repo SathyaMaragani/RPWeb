@@ -140,6 +140,7 @@ try {
           color: entry.character.color,
           title: entry.character.title,
           bio: entry.character.bio,
+          appearance: entry.character.appearance,
           role: playedBy?.role ?? null,
           playedBy: playedBy?.user.name ?? null,
         }

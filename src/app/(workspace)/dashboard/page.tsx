@@ -75,7 +75,14 @@ export default async function DashboardPage() {
         timestamp: true,
         world: { select: { id: true, name: true } },
         character: {
-          select: { id: true, name: true, color: true, avatarUrl: true, avatarUpdatedAt: true },
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            avatarUrl: true,
+            avatarUpdatedAt: true,
+            appearanceUpdatedAt: true,
+          },
         },
       },
     }),

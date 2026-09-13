@@ -1,4 +1,6 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
+import { ArrowRight, Wand2 } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { editCharacter } from "@/server/actions/characters"
 import { requireUserId } from "@/server/auth-guards"
@@ -42,6 +44,17 @@ export default async function EditCharacterPage(
             <>Not in a world yet.</>
           )}
         </p>
+
+        <Link
+          href={`/characters/${characterId}/customize`}
+          className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink transition hover:bg-accent/20"
+        >
+          <span className="flex items-center gap-2">
+            <Wand2 size={16} className="text-accent-soft" />
+            {character.appearanceUpdatedAt ? "Change their designed look" : "Design their look in the studio"}
+          </span>
+          <ArrowRight size={16} />
+        </Link>
 
         <div className="mt-8">
           <CharacterForm

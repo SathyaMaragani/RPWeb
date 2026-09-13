@@ -65,12 +65,30 @@ export function avatarSrc(character: {
   id: string
   avatarUrl?: string | null
   avatarUpdatedAt?: Date | string | null
+  appearanceUpdatedAt?: Date | string | null
 }): string | null {
-  if (character.avatarUpdatedAt) {
-    const version = new Date(character.avatarUpdatedAt).getTime()
-    return `/api/characters/${character.id}/avatar?v=${version}`
+  const uploaded = character.avatarUpdatedAt ? new Date(character.avatarUpdatedAt).getTime() : 0
+  const designed = character.appearanceUpdatedAt
+    ? new Date(character.appearanceUpdatedAt).getTime()
+    : 0
+
+  // Whichever was set last is the face they chose: uploading a picture
+  // replaces a designed look, and saving a design again brings it back.
+  if (designed && designed >= uploaded) {
+    return `/api/characters/${character.id}/portrait?v=${designed}`
   }
+  if (uploaded) return `/api/characters/${character.id}/avatar?v=${uploaded}`
   return character.avatarUrl ?? null
+}
+
+/** The full-length designed figure, or null when they have never been designed. */
+export function portraitSrc(character: {
+  id: string
+  appearanceUpdatedAt?: Date | string | null
+}): string | null {
+  if (!character.appearanceUpdatedAt) return null
+  const version = new Date(character.appearanceUpdatedAt).getTime()
+  return `/api/characters/${character.id}/portrait?view=full&v=${version}`
 }
 
 /** Splits a `data:` URL into its mime type and bytes. */
