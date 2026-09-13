@@ -37,11 +37,14 @@ export function characterColor(character: { id: string; color?: string | null })
   return character.color ?? fallbackColor(character.id)
 }
 
-/** Uploaded avatars are stored square at this size, in WebP. */
-export const AVATAR_SIZE = 256
+/**
+ * Uploaded avatars are stored square at this size, in WebP. Large enough for
+ * the character gallery's portraits and view dialog on a high-density screen.
+ */
+export const AVATAR_SIZE = 768
 
-/** Refuse anything larger than a cropped 256px image could plausibly be. */
-export const MAX_AVATAR_BYTES = 400_000
+/** Refuse anything larger than a cropped 768px WebP could plausibly be. */
+export const MAX_AVATAR_BYTES = 1_500_000
 
 /** Banners are stored at this width, three times as wide as they are tall. */
 export const BANNER_WIDTH = 768
