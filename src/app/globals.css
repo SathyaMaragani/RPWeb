@@ -6,20 +6,22 @@
  * mood of the app is then a change to this block, not a sweep through markup.
  */
 @theme {
-  /* True black behind everything. The tones above it are kept close together
-     so panels lift off the background without turning grey, and `line` stays
-     bright enough to remain a visible edge against black. */
-  --color-canvas: #000000;
-  --color-surface: #0b0b11;
-  --color-elevated: #16161d;
-  --color-line: #26262f;
-  --color-ink: #e7e7f2;
-  --color-muted: #8b8ba7;
+  /* Black behind everything, with the faintest violet cast so the panels
+     above it read as night rather than grey. `line` stays bright enough to
+     remain a visible edge against the canvas. */
+  --color-canvas: #05040a;
+  --color-surface: #0c0a16;
+  --color-elevated: #161328;
+  --color-line: #252040;
+  --color-ink: #ece9f8;
+  --color-muted: #948fb4;
   --color-accent: #7c5cff;
   --color-accent-soft: #9a83ff;
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Storybook serif for names and headings. */
+  --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
 }
 
 :root {
@@ -29,6 +31,15 @@
 body {
   /* The Geist family loaded by next/font. */
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Page and section titles are set in the display serif everywhere. In the base
+   layer so a utility class on a heading can still override it. */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-display);
+  }
 }
 
 /* Respect the home-indicator area on phones, used by the mobile nav. */
@@ -55,7 +66,7 @@ body {
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #33334d;
+  background-color: #3a3360;
 }
 
 /* Message actions appear on hover, but must stay reachable by keyboard. */

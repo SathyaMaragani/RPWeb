@@ -107,8 +107,8 @@ export function Wordmark({ size = 28, className }: { size?: number; className?: 
     <span className={`flex items-center gap-2.5 ${className ?? ""}`}>
       <Logo size={size} />
       <span
-        className="font-semibold tracking-tight text-ink"
-        style={{ fontSize: Math.round(size * 0.62) }}
+        className="font-display font-semibold tracking-tight text-ink"
+        style={{ fontSize: Math.round(size * 0.72) }}
       >
         RPWeb
       </span>

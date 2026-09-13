@@ -2,6 +2,7 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { requireUserId } from "@/server/auth-guards"
 import { signOutAction } from "@/server/actions/session"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { Download, LogOut, ShieldAlert, User as UserIcon } from "lucide-react"
 
 export default async function SettingsPage() {
@@ -20,10 +21,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-6 lg:p-10">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Settings</h1>
-        <p className="text-muted mt-1">Your account and your data.</p>
-      </div>
+      <PageHeader eyebrow="Settings" title="Settings" subtitle="Your account and your data." />
 
       <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
         <div className="flex items-center gap-3 mb-4">
