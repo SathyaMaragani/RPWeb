@@ -85,6 +85,66 @@ export default function MessageItem({
       </div>
 
       <div className="min-w-0 flex-1">
+        {/* First in the text column so that, where the controls are always
+            shown (touch screens), they float and the name, timestamp and text
+            wrap around them instead of sitting underneath. With a mouse they
+            are pinned to the corner and only appear on hover. */}
+        {canManage && !editing && (
+          <div className="msg-actions absolute right-3 top-2 flex items-center gap-1">
+            <button
+              onClick={() => {
+                setEditing(true)
+                setMenuOpen(false)
+              }}
+              title="Edit"
+              className="rounded-lg border border-line bg-surface p-1.5 text-muted transition hover:text-ink"
+            >
+              <Pencil size={13} />
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                title="More"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="rounded-lg border border-line bg-surface p-1.5 text-muted transition hover:text-ink"
+              >
+                <MoreHorizontal size={13} />
+              </button>
+              {menuOpen && (
+                <>
+                  {/* Click-away layer, so the menu closes without a document listener. */}
+                  <button
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-line bg-elevated shadow-xl"
+                  >
+                    <button
+                      role="menuitem"
+                      onClick={() => void remove()}
+                      disabled={busy}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      <Trash2 size={13} /> Delete message
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-muted transition hover:bg-surface"
+                    >
+                      <X size={13} /> Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {showHeader && (
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold" style={{ color: accent }}>
@@ -151,62 +211,6 @@ export default function MessageItem({
 
         {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
       </div>
-
-      {canManage && !editing && (
-        <div className="msg-actions absolute right-3 top-2 flex items-center gap-1">
-          <button
-            onClick={() => {
-              setEditing(true)
-              setMenuOpen(false)
-            }}
-            title="Edit"
-            className="rounded-lg border border-line bg-surface p-1.5 text-muted transition hover:text-ink"
-          >
-            <Pencil size={13} />
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              title="More"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              className="rounded-lg border border-line bg-surface p-1.5 text-muted transition hover:text-ink"
-            >
-              <MoreHorizontal size={13} />
-            </button>
-            {menuOpen && (
-              <>
-                {/* Click-away layer, so the menu closes without a document listener. */}
-                <button
-                  className="fixed inset-0 z-10 cursor-default"
-                  aria-label="Close menu"
-                  onClick={() => setMenuOpen(false)}
-                />
-                <div
-                  role="menu"
-                  className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-line bg-elevated shadow-xl"
-                >
-                  <button
-                    role="menuitem"
-                    onClick={() => void remove()}
-                    disabled={busy}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-                  >
-                    <Trash2 size={13} /> Delete message
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-muted transition hover:bg-surface"
-                  >
-                    <X size={13} /> Cancel
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
