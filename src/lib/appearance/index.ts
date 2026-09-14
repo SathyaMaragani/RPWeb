@@ -12,7 +12,7 @@ import {
   METAL_COLORS,
   SKIN_TONES,
   SLOTS,
-  shade,
+  colorFamily,
   type Appearance,
   type Asset,
   type ColorSlot,
@@ -24,11 +24,22 @@ import { BODY_ASSETS } from "./assets/body"
 import { HAIR_ASSETS } from "./assets/hair"
 import { CLOTHING_ASSETS } from "./assets/clothes"
 import { EXTRA_ASSETS } from "./assets/extras"
+import { IMPORTED_ASSETS } from "./assets/imported"
 
 export * from "./core"
+export { PRESETS } from "./presets"
 
-/** Every asset. Adding an item is a new entry in one of the asset files. */
-export const ASSETS: Asset[] = [...BODY_ASSETS, ...HAIR_ASSETS, ...CLOTHING_ASSETS, ...EXTRA_ASSETS]
+const importedIds = new Set(IMPORTED_ASSETS.map((a) => a.id))
+
+/**
+ * Every asset. Artwork imported from art/characters replaces a built-in asset
+ * with the same id, so a drawn version can stand in for a coded one without
+ * breaking anyone's saved look.
+ */
+export const ASSETS: Asset[] = [
+  ...[...BODY_ASSETS, ...HAIR_ASSETS, ...CLOTHING_ASSETS, ...EXTRA_ASSETS].filter((a) => !importedIds.has(a.id)),
+  ...IMPORTED_ASSETS,
+]
 
 const BY_ID = new Map(ASSETS.map((a) => [a.id, a]))
 
@@ -42,14 +53,15 @@ export const DEFAULT_APPEARANCE: Appearance = {
   eyes: EYE_COLORS[0],
   parts: {
     body: { id: "body_average" },
-    face: { id: "face_oval" },
-    eyes: { id: "eyes_round" },
-    eyebrows: { id: "brows_arched" },
+    ears: { id: "ears_human" },
+    face: { id: "face_soft" },
+    eyes: { id: "eyes_soft" },
+    eyebrows: { id: "brows_soft" },
     mouth: { id: "mouth_smile" },
-    hair: { id: "hair_side_part" },
-    top: { id: "top_tshirt" },
-    bottom: { id: "bottom_trousers" },
-    shoes: { id: "shoes_boots" },
+    hair: { id: "hair_tousled" },
+    top: { id: "top_shirt", colors: { primary: "#f2efe8", secondary: "#d9c3a0" } },
+    bottom: { id: "bottom_trousers", colors: { primary: "#2f3440", secondary: "#16141c" } },
+    shoes: { id: "shoes_ankle" },
   },
 }
 
@@ -61,27 +73,14 @@ export function paletteFor(asset: Asset, key: ColorSlot) {
 function tokensFor(a: Appearance, part: Part | undefined, asset: Asset): Record<string, string> {
   const pick = (key: ColorSlot, fallback: string) =>
     part?.colors?.[key] ?? asset.colors?.[key] ?? fallback
-  const primary = pick("primary", "#6d28d9")
-  const secondary = pick("secondary", "#c7c7d0")
-  const trim = pick("trim", "#c9a227")
   return {
     line: LINE,
-    skin: a.skin,
-    skinShade: shade(a.skin, -0.18),
-    skinLight: shade(a.skin, 0.25),
-    lips: shade(a.skin, -0.35),
-    hair: a.hair,
-    hairShade: shade(a.hair, -0.3),
-    hairLight: shade(a.hair, 0.3),
-    eyes: a.eyes,
-    eyesShade: shade(a.eyes, -0.35),
-    primary,
-    primaryShade: shade(primary, -0.25),
-    primaryLight: shade(primary, 0.2),
-    secondary,
-    secondaryShade: shade(secondary, -0.25),
-    trim,
-    trimShade: shade(trim, -0.25),
+    ...colorFamily("skin", a.skin),
+    ...colorFamily("hair", a.hair),
+    ...colorFamily("eyes", a.eyes),
+    ...colorFamily("primary", pick("primary", "#6b3fa0")),
+    ...colorFamily("secondary", pick("secondary", "#c9ccd6")),
+    ...colorFamily("trim", pick("trim", "#d4af37")),
   }
 }
 
@@ -194,17 +193,26 @@ export function withPartColor(a: Appearance, slotId: SlotId, key: ColorSlot, col
 
 /** How often an optional slot is filled when randomising. Unlisted ones always are. */
 const RANDOM_CHANCE: Partial<Record<SlotId, number>> = {
-  hair: 0.92,
+  markings: 0.3,
+  hair: 0.96,
+  hairAccessory: 0.2,
+  vest: 0.35,
+  belt: 0.4,
   coat: 0.35,
-  shoes: 0.9,
-  glasses: 0.2,
+  gloves: 0.2,
+  shoes: 0.95,
+  glasses: 0.12,
+  mask: 0.06,
   earrings: 0.3,
   necklace: 0.3,
-  hat: 0.25,
+  bracelets: 0.2,
+  hat: 0.22,
   weapon: 0.3,
-  wings: 0.12,
-  tail: 0.12,
-  horns: 0.12,
+  animalEars: 0.1,
+  horns: 0.1,
+  halo: 0.06,
+  wings: 0.08,
+  tail: 0.08,
 }
 
 /** A valid random look. Identity (name, bio) lives elsewhere and is untouched. */
@@ -226,7 +234,8 @@ export function randomAppearance(rand: () => number = Math.random): Appearance {
         ? !dress
         : slot.id === "top" || slot.id === "bottom"
           ? dress
-          : slot.optional && rand() > (RANDOM_CHANCE[slot.id] ?? 1)
+          : // A vest over a gown is allowed, just rarely what anyone wants at random.
+            (slot.id === "vest" && dress) || (slot.optional && rand() > (RANDOM_CHANCE[slot.id] ?? 1))
     if (skip) continue
 
     const asset = pick(assetsFor(slot.id))

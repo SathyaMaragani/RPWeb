@@ -13,7 +13,7 @@ export const CANVAS_HEIGHT = 1536
 
 /** The whole figure, and the square around head and shoulders used for avatars. */
 export const FULL_VIEW = `0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`
-export const BUST_VIEW = "262 110 500 500"
+export const BUST_VIEW = "197 90 630 630"
 
 /** Paint order, back to front. Every asset draws into one or more of these. */
 export const LAYERS = [
@@ -23,7 +23,10 @@ export const LAYERS = [
   "legs",
   "feet",
   "torso",
+  "vest",
+  "waist",
   "outer",
+  "gloves",
   "neck",
   "head",
   "face",
@@ -43,7 +46,10 @@ export const BODY_LAYERS: ReadonlySet<Layer> = new Set([
   "legs",
   "feet",
   "torso",
+  "vest",
+  "waist",
   "outer",
+  "gloves",
   "neck",
   "hand",
 ])
@@ -58,30 +64,40 @@ export const CATEGORIES = [
   "Clothes",
   "Accessories",
   "Weapons",
-  "Special",
+  "Fantasy",
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 
 export type SlotId =
   | "body"
+  | "ears"
   | "face"
+  | "markings"
   | "eyes"
   | "eyebrows"
   | "mouth"
   | "hair"
+  | "hairAccessory"
   | "top"
   | "bottom"
   | "dress"
+  | "vest"
+  | "belt"
   | "coat"
+  | "gloves"
   | "shoes"
   | "glasses"
+  | "mask"
   | "earrings"
   | "necklace"
+  | "bracelets"
   | "hat"
   | "weapon"
+  | "animalEars"
+  | "horns"
+  | "halo"
   | "wings"
   | "tail"
-  | "horns"
 
 export type SlotDef = {
   id: SlotId
@@ -89,7 +105,7 @@ export type SlotDef = {
   category: Category
   /** Whether "None" is allowed. */
   optional: boolean
-  /** Slots that are emptied when this one is filled. */
+  /** Slots that are emptied when this one is filled: only real visual conflicts. */
   excludes?: SlotId[]
   /** The canvas region its thumbnails show. */
   view: string
@@ -97,25 +113,35 @@ export type SlotDef = {
 
 /** In paint order within a layer, and in the order the editor lists them. */
 export const SLOTS: SlotDef[] = [
-  { id: "body", label: "Body type", category: "Body", optional: false, view: "150 100 724 1400" },
-  { id: "face", label: "Face shape", category: "Face", optional: false, view: "340 140 344 380" },
-  { id: "eyes", label: "Eyes", category: "Face", optional: false, view: "400 270 224 140" },
-  { id: "eyebrows", label: "Eyebrows", category: "Face", optional: false, view: "400 245 224 140" },
-  { id: "mouth", label: "Mouth", category: "Face", optional: false, view: "432 370 160 120" },
-  { id: "hair", label: "Hairstyle", category: "Hair", optional: true, view: "230 20 564 840" },
-  { id: "top", label: "Top", category: "Clothes", optional: true, excludes: ["dress"], view: "220 470 584 640" },
-  { id: "bottom", label: "Bottom", category: "Clothes", optional: true, excludes: ["dress"], view: "220 940 584 560" },
-  { id: "dress", label: "Dress", category: "Clothes", optional: true, excludes: ["top", "bottom"], view: "120 470 784 1066" },
-  { id: "coat", label: "Coat", category: "Clothes", optional: true, view: "140 470 744 940" },
-  { id: "shoes", label: "Shoes", category: "Clothes", optional: true, view: "320 1150 384 360" },
-  { id: "glasses", label: "Glasses", category: "Accessories", optional: true, view: "360 255 304 160" },
-  { id: "earrings", label: "Earrings", category: "Accessories", optional: true, view: "330 290 364 170" },
-  { id: "necklace", label: "Necklace", category: "Accessories", optional: true, view: "392 440 240 260" },
-  { id: "hat", label: "Headwear", category: "Accessories", optional: true, view: "250 0 524 440" },
-  { id: "weapon", label: "Weapon", category: "Weapons", optional: true, view: "560 440 380 1096" },
-  { id: "wings", label: "Wings", category: "Special", optional: true, view: "0 150 1024 1150" },
-  { id: "tail", label: "Tail", category: "Special", optional: true, view: "440 760 584 740" },
-  { id: "horns", label: "Horns", category: "Special", optional: true, view: "300 20 424 360" },
+  { id: "body", label: "Body type", category: "Body", optional: false, view: "180 110 664 1400" },
+  { id: "ears", label: "Ears", category: "Body", optional: false, view: "150 220 400 400" },
+  { id: "face", label: "Face shape", category: "Face", optional: false, view: "282 150 460 540" },
+  { id: "markings", label: "Face details", category: "Face", optional: true, view: "352 330 320 300" },
+  { id: "eyes", label: "Eyes", category: "Face", optional: false, view: "372 340 280 220" },
+  { id: "eyebrows", label: "Eyebrows", category: "Face", optional: false, view: "372 300 280 220" },
+  { id: "mouth", label: "Mouth", category: "Face", optional: false, view: "432 480 160 140" },
+  { id: "hair", label: "Hairstyle", category: "Hair", optional: true, view: "150 30 724 1100" },
+  { id: "hairAccessory", label: "Hair accessory", category: "Hair", optional: true, view: "180 110 664 440" },
+  { id: "top", label: "Top", category: "Clothes", optional: true, excludes: ["dress"], view: "292 620 440 480" },
+  { id: "bottom", label: "Bottom", category: "Clothes", optional: true, excludes: ["dress"], view: "292 930 440 580" },
+  { id: "dress", label: "Dress", category: "Clothes", optional: true, excludes: ["top", "bottom"], view: "152 620 720 900" },
+  { id: "vest", label: "Vest / armour", category: "Clothes", optional: true, view: "312 640 400 460" },
+  { id: "belt", label: "Belt", category: "Clothes", optional: true, view: "312 880 400 300" },
+  { id: "coat", label: "Coat / cloak", category: "Clothes", optional: true, view: "152 620 720 900" },
+  { id: "gloves", label: "Gloves", category: "Clothes", optional: true, view: "292 880 440 240" },
+  { id: "shoes", label: "Shoes", category: "Clothes", optional: true, view: "362 1190 300 320" },
+  { id: "glasses", label: "Glasses", category: "Accessories", optional: true, view: "322 350 380 200" },
+  { id: "mask", label: "Mask", category: "Accessories", optional: true, view: "292 330 440 340" },
+  { id: "earrings", label: "Earrings", category: "Accessories", optional: true, view: "262 400 500 240" },
+  { id: "necklace", label: "Necklace", category: "Accessories", optional: true, view: "362 580 300 360" },
+  { id: "bracelets", label: "Bracelets", category: "Accessories", optional: true, view: "292 880 440 200" },
+  { id: "hat", label: "Headwear", category: "Accessories", optional: true, view: "182 0 660 660" },
+  { id: "weapon", label: "Weapon", category: "Weapons", optional: true, view: "440 360 560 1176" },
+  { id: "animalEars", label: "Animal ears", category: "Fantasy", optional: true, view: "222 20 580 420" },
+  { id: "horns", label: "Horns", category: "Fantasy", optional: true, view: "182 0 660 460" },
+  { id: "halo", label: "Halo", category: "Fantasy", optional: true, view: "222 0 580 420" },
+  { id: "wings", label: "Wings", category: "Fantasy", optional: true, view: "0 420 1024 1000" },
+  { id: "tail", label: "Tail", category: "Fantasy", optional: true, view: "480 760 544 760" },
 ]
 
 export type Asset = {
@@ -124,9 +150,10 @@ export type Asset = {
   slot: SlotId
   /**
    * Markup per layer, drawn on the 1024 × 1536 canvas in the standard pose.
-   * Colours are written as {{tokens}}: skin, skinShade, skinLight, lips, hair,
-   * hairShade, hairLight, eyes, eyesShade, line, and for recolourable assets
-   * primary / secondary / trim with their Shade and Light variants.
+   * Colours are written as {{tokens}}. The bases are skin, hair and eyes, and
+   * for recolourable assets primary, secondary and trim; each also comes as
+   * Shade, Deep, Light and Line variants (e.g. {{primaryShade}}).
+   * Element ids must start with the slot name so no two assets collide.
    */
   layers: Partial<Record<Layer, string>>
   /** The recolourable regions this asset has, with their starting colours. */
@@ -147,11 +174,22 @@ export type Appearance = {
   parts: Partial<Record<SlotId, Part>>
 }
 
-export const SKIN_TONES = ["#f6d7c3", "#eec1a0", "#d9a07b", "#b87952", "#8d5a3b", "#5c3a28"]
-export const HAIR_COLORS = ["#1a1a1f", "#4a3222", "#8a5a33", "#d8b16a", "#b5452f", "#e8e4dc", "#7c5cff", "#2f8f83"]
-export const EYE_COLORS = ["#4a3222", "#3a6ea5", "#3f8f5a", "#8a8f98", "#c9a227", "#8b5cf6", "#c23b3b", "#dfe3ee"]
-export const CLOTH_COLORS = ["#18181b", "#f4f4f5", "#9f1239", "#1e3a8a", "#047857", "#6d28d9", "#7c2d12", "#64748b", "#db2777", "#0e7490"]
-export const METAL_COLORS = ["#c9a227", "#c7c7d0", "#b87333", "#374151", "#e5e4e2"]
+export const SKIN_TONES = [
+  "#fde7d6", "#f3c9a8", "#e0a882", "#c68660", "#9a6243", "#6b412c",
+  "#e6e9f2", "#b9c7e6", "#a9c79c", "#c9b3e6",
+]
+export const HAIR_COLORS = [
+  "#17141c", "#3b2a22", "#6f4a30", "#a8743f", "#e2c07a", "#f1ece2", "#b8b8c4",
+  "#b3262e", "#e0584f", "#e58fb5", "#8e6ad6", "#3f63c4", "#2e8f83", "#6fae4d",
+]
+export const EYE_COLORS = [
+  "#5a3b25", "#9a6a2f", "#2f6fb0", "#3f9a6a", "#8b95a5", "#d4a017", "#b0243a", "#8b5cf6", "#e8e8f0", "#e05d9a",
+]
+export const CLOTH_COLORS = [
+  "#16141c", "#f2efe8", "#8f1d2c", "#c2334a", "#1f2f6b", "#3f6fd1", "#1f5e45",
+  "#6b3fa0", "#c9a0dc", "#e7a6c0", "#6b4a32", "#d9c3a0", "#5b6472", "#2b7a8c",
+]
+export const METAL_COLORS = ["#d4af37", "#c9ccd6", "#b87333", "#2f3440", "#e8e4dc"]
 
 export const HEX = /^#[0-9a-f]{6}$/i
 
@@ -167,16 +205,77 @@ export function shade(hex: string, amount: number) {
   )
 }
 
-export const LINE = "#1b1524"
+/** The token variants every colour base gets. */
+export function colorFamily(name: string, hex: string): Record<string, string> {
+  return {
+    [name]: hex,
+    [`${name}Shade`]: shade(hex, -0.2),
+    [`${name}Deep`]: shade(hex, -0.42),
+    [`${name}Light`]: shade(hex, 0.32),
+    [`${name}Line`]: shade(hex, -0.66),
+  }
+}
 
-/** Outline attributes shared by every drawn shape. */
-export const OUTLINE = `stroke="${LINE}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"`
+export const LINE = "#1f1726"
 
-/** A stroke-only line in the outline colour. */
-export const stroke = (d: string, width = 6, color = LINE) =>
-  `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`
+/** Outline attributes in a fixed dark ink, for small details. */
+export const OUTLINE = `stroke="${LINE}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`
 
-/** The markup plus its mirror image across the centre line, for left/right pairs. */
+/** A stroke-only line. */
+export const stroke = (d: string, width = 4, color = LINE, extra = "") =>
+  `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`
+
+/** A filled shape outlined in its own darker line colour. */
+export const fillLine = (d: string, base: string, width = 4, extra = "") =>
+  `<path d="${d}" fill="{{${base}}}" stroke="{{${base}Line}}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round" ${extra}/>`
+
+/** Draws `inner` only inside the shape `d`. */
+export const clip = (id: string, d: string, inner: string) =>
+  `<clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})">${inner}</g>`
+
+/**
+ * A shaded shape: base colour, then shadows and highlights kept inside it, then
+ * its outline on top so the edge stays crisp over the shading.
+ */
+export const shaded = (id: string, d: string, base: string, inner = "", width = 4) =>
+  `<path d="${d}" fill="{{${base}}}"/>` +
+  (inner ? clip(id, d, inner) : "") +
+  `<path d="${d}" fill="none" stroke="{{${base}Line}}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round"/>`
+
+/** A plain filled path in a token colour, for shadow and highlight shapes. */
+export const tone = (d: string, color: string, extra = "") => `<path d="${d}" fill="{{${color}}}" ${extra}/>`
+
+/**
+ * The markup plus its mirror image across the centre line, for left/right
+ * pairs. Ids in the mirrored copy get a suffix so they stay unique.
+ */
 export function sym(markup: string) {
-  return `${markup}<g transform="matrix(-1 0 0 1 ${CANVAS_WIDTH} 0)">${markup}</g>`
+  // Only ids defined inside the markup are renamed; references to shared
+  // definitions elsewhere (a filter, say) must keep pointing at the original.
+  let mirrored = markup
+  for (const [, id] of markup.matchAll(/\bid="([^"]+)"/g)) {
+    mirrored = mirrored
+      .split(`id="${id}"`)
+      .join(`id="${id}-m"`)
+      .split(`url(#${id})`)
+      .join(`url(#${id}-m)`)
+  }
+  return `${markup}<g transform="matrix(-1 0 0 1 ${CANVAS_WIDTH} 0)">${mirrored}</g>`
+}
+
+/**
+ * A tapered lock of hair from a base (a → b) to a tip, bowed sideways by
+ * `sway`, with a strand line down its middle.
+ */
+export function lock(ax: number, ay: number, bx: number, by: number, tx: number, ty: number, sway = 0) {
+  const d =
+    `M${ax} ${ay} Q${(ax + tx) / 2 + sway} ${(ay + ty) / 2} ${tx} ${ty} ` +
+    `Q${(bx + tx) / 2 + sway * 0.55} ${(by + ty) / 2} ${bx} ${by} Z`
+  const mx = (ax + bx) / 2
+  const my = (ay + by) / 2
+  const strand = `M${mx} ${my} Q${(mx + tx) / 2 + sway * 0.8} ${(my + ty) / 2} ${mx + (tx - mx) * 0.82} ${my + (ty - my) * 0.82}`
+  return (
+    `<path d="${d}" fill="{{hair}}" stroke="{{hairLine}}" stroke-width="3.5" stroke-linejoin="round"/>` +
+    stroke(strand, 3, "{{hairShade}}")
+  )
 }

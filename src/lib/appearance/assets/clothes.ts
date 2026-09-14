@@ -1,34 +1,16 @@
-import { OUTLINE, stroke, sym, type Asset } from "../core"
+import { shaded, stroke, sym, tone, type Asset } from "../core"
 
-const P = (d: string) => `<path d="${d}" fill="{{primary}}" ${OUTLINE}/>`
-const S = (d: string) => `<path d="${d}" fill="{{secondary}}" ${OUTLINE}/>`
-const T = (d: string) => `<path d="${d}" fill="{{trim}}" ${OUTLINE}/>`
-const fold = (d: string) => stroke(d, 4, "{{primaryShade}}")
-const dot = (cx: number, cy: number, r: number, fill = "{{trim}}") =>
-  `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" ${OUTLINE}/>`
-
-// Shared pieces, drawn over the standard figure. Sleeves are the viewer's
-// left side and mirrored.
-const TORSO = "M322 585 C326 552 380 540 448 536 Q512 566 576 536 C644 540 698 552 702 585 L678 905 C692 950 702 985 698 1005 L326 1005 C322 985 332 950 346 905 Z"
-const SHORT_SLEEVE = "M340 572 C298 584 282 634 278 700 L350 714 C356 672 364 636 378 606 Z"
-const LONG_SLEEVE = "M342 570 C298 584 280 636 276 700 L256 1000 L332 1008 L354 724 C360 682 368 644 380 608 Z"
-const CUFF = "M256 976 L334 984 L332 1010 L254 1002 Z"
-const COLLAR = stroke("M450 540 Q512 572 574 540", 8, "{{trim}}")
-const BODY_FOLDS = fold("M420 700 Q430 800 410 880") + fold("M604 700 Q594 800 614 880")
-
-const PANTS_LEG = "M330 985 L516 985 L506 1180 L492 1428 L406 1428 L378 1180 Z"
-const WAISTBAND = "M326 975 L698 975 L700 1015 L324 1015 Z"
-const SKIRT = "M334 975 L690 975 L748 1200 L276 1200 Z"
-
-const BODICE = "M340 590 C344 556 392 544 448 540 Q512 570 576 540 C632 544 680 556 684 590 L664 900 L360 900 Z"
-const STRAPLESS = "M352 640 Q430 600 512 640 Q594 600 672 640 L660 900 L364 900 Z"
-
-const COAT_PANEL = "M322 580 C326 552 380 540 448 536 L500 640 L480 1250 L300 1250 C300 1100 330 950 346 905 Z"
-const JACKET_PANEL = "M322 580 C326 552 380 540 448 536 L500 640 L496 1010 L322 1010 C320 980 330 950 346 905 Z"
-const LAPEL = "M448 536 L500 640 L470 700 L420 580 Z"
-
-const BOOT = "M404 1300 L490 1300 L492 1440 C494 1470 486 1482 470 1484 L376 1484 C360 1484 356 1462 372 1448 C390 1434 402 1428 404 1410 Z"
-const SOLE = "M362 1470 L494 1470 L492 1490 L360 1490 Z"
+// Shaded pieces in each recolourable colour. Ids must start with the slot name.
+const P = (id: string, d: string, inner = "") => shaded(id, d, "primary", inner)
+const S = (id: string, d: string, inner = "") => shaded(id, d, "secondary", inner)
+const T = (id: string, d: string, inner = "") => shaded(id, d, "trim", inner)
+const shadeOf = (d: string, base = "primary") => tone(d, `${base}Shade`)
+const lightOf = (d: string, base = "primary") => tone(d, `${base}Light`, 'opacity=".55"')
+const fold = (d: string, base = "primary") => stroke(d, 3, `{{${base}Deep}}`, 'opacity=".85"')
+const stitch = (d: string, base = "trim") => stroke(d, 3, `{{${base}}}`, 'stroke-dasharray="9 7"')
+const button = (x: number, y: number, r = 7, base = "secondary") =>
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="{{${base}}}" stroke="{{${base}Line}}" stroke-width="2.5"/>` +
+  `<circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.32}" fill="{{${base}Light}}"/>`
 
 const item = (
   slot: Asset["slot"],
@@ -39,219 +21,395 @@ const item = (
   metal = false
 ): Asset => ({ id, name, slot, colors, layers, metal })
 
-const tops: Asset[] = [
-  item("top", "top_tshirt", "T-shirt", { primary: "#1e3a8a", trim: "#f4f4f5" }, {
-    torso: sym(P(SHORT_SLEEVE)) + P(TORSO) + COLLAR + BODY_FOLDS,
-  }),
-  item("top", "top_longsleeve", "Long-sleeve shirt", { primary: "#f4f4f5", secondary: "#64748b" }, {
-    torso: sym(P(LONG_SLEEVE) + S(CUFF)) + P(TORSO) + stroke("M450 540 Q512 572 574 540", 6, "{{primaryShade}}") + BODY_FOLDS,
-  }),
-  item("top", "top_tunic", "Tunic", { primary: "#7c2d12", secondary: "#3f2a1d", trim: "#c9a227" }, {
+// ---------------------------------------------------------------- shared cuts
+
+const SLEEVE = "M402 692 C368 698 348 730 346 778 L338 882 C334 932 332 962 332 994 L394 1000 C396 952 400 908 404 872 L416 780 C420 752 426 732 438 716 Z"
+const SLEEVE_SHADE = "M392 694 L452 694 L410 1006 L376 1006 Z"
+const SLEEVE_FOLDS = (base = "primary") => fold("M350 842 Q372 852 400 844", base) + fold("M342 922 Q366 932 398 924", base)
+const CUFF = "M328 966 L398 972 L396 1008 L326 1002 Z"
+const SHIRT = "M470 662 Q512 690 554 662 C580 676 608 688 634 700 C652 712 656 732 650 758 L626 858 C618 878 612 900 612 920 C626 952 634 984 632 1030 L392 1030 C390 984 398 952 412 920 C412 900 406 878 398 858 L374 758 C368 732 372 712 390 700 C416 688 444 676 470 662 Z"
+const SHIRT_SHADE = "M592 660 C640 760 596 900 644 1040 L720 1040 L720 660 Z"
+const SHIRT_FOLDS = (base = "primary") =>
+  fold("M424 764 Q452 806 442 864", base) + fold("M600 764 Q574 806 584 864", base) + fold("M468 972 Q500 990 544 978", base)
+
+const COAT_SLEEVE = "M400 686 C360 692 340 728 338 780 L328 884 C324 934 322 964 322 996 L400 1002 C402 954 406 908 410 872 L422 782 C426 752 432 732 444 714 Z"
+
+// ---------------------------------------------------------------- tops
+
+const TUNIC = "M470 662 Q512 690 554 662 C580 676 608 688 634 700 C652 712 656 732 650 758 L626 858 C618 878 612 900 612 920 C630 960 646 1020 650 1100 L574 1100 L556 1044 L512 1062 L468 1044 L450 1100 L374 1100 C378 1020 394 960 412 920 C412 900 406 878 398 858 L374 758 C368 732 372 712 390 700 C416 688 444 676 470 662 Z"
+const PUFF = "M404 688 C354 688 328 730 334 788 C338 820 366 836 398 828 C410 790 422 752 442 716 Z"
+const FOREARM = "M348 812 L338 902 C334 942 332 966 332 994 L394 1000 C396 956 400 912 404 876 L412 822 Z"
+
+const zigzag = (x0: number, x1: number, y: number, h: number) => {
+  let d = `M${x0} ${y}`
+  for (let x = x0, up = true; x < x1; x += 18, up = !up) d += ` L${x + 18} ${up ? y - h : y}`
+  return d
+}
+
+const TOPS: Asset[] = [
+  item("top", "top_shirt", "Button-up shirt", { primary: "#16141c", secondary: "#e8e4dc" }, {
     torso:
-      sym(P(LONG_SLEEVE)) +
-      P("M322 585 C326 552 380 540 448 536 Q512 566 576 536 C644 540 698 552 702 585 L684 905 C706 980 716 1040 716 1090 L308 1090 C308 1040 318 980 340 905 Z") +
-      S("M338 880 L686 880 L690 924 L334 924 Z") +
-      T("M492 874 L532 874 L532 930 L492 930 Z") +
-      stroke("M460 542 L512 620 L564 542", 7, "{{trim}}"),
+      sym(
+        P("top-sleeve", SLEEVE, shadeOf(SLEEVE_SHADE) + SLEEVE_FOLDS()) +
+          P("top-cuff", CUFF, shadeOf("M372 960 L402 960 L402 1012 L362 1012 Z")) +
+          button(378, 988, 5)
+      ) +
+      P("top-body", SHIRT, shadeOf(SHIRT_SHADE) + lightOf("M418 704 C440 692 468 686 480 692 L432 830 C414 790 408 742 418 704 Z") + SHIRT_FOLDS()) +
+      stroke("M512 700 L512 1028", 3, "{{primaryLine}}") +
+      [752, 832, 912, 992].map((y) => button(526, y, 6)).join("") +
+      sym(P("top-collar", "M468 654 L512 700 L494 750 L442 680 Z", shadeOf("M470 700 L514 700 L500 752 Z"))),
   }),
-  item("top", "top_vest", "Vest and shirt", { primary: "#18181b", secondary: "#f4f4f5", trim: "#c9a227" }, {
+  item("top", "top_blouse", "Puff-sleeve blouse", { primary: "#f2efe8", secondary: "#8f1d2c", trim: "#d4af37" }, {
     torso:
-      sym(S(LONG_SLEEVE)) +
-      S(TORSO) +
-      sym(P("M322 585 C326 552 380 540 440 536 L500 700 L500 1005 L326 1005 C322 985 332 950 346 905 Z") + dot(484, 760, 8) + dot(484, 870, 8)),
+      sym(
+        P("top-forearm", FOREARM, shadeOf(SLEEVE_SHADE)) +
+          P("top-puff", PUFF, shadeOf("M396 690 L452 690 L402 840 L372 840 Z") + fold("M350 760 Q370 790 398 800") + fold("M366 712 Q384 760 400 780")) +
+          S("top-ruffle", "M322 986 Q338 1016 360 1000 Q380 1018 402 1002 L398 976 L326 970 Z")
+      ) +
+      P("top-body", SHIRT, shadeOf(SHIRT_SHADE) + SHIRT_FOLDS()) +
+      P(
+        "top-jabot",
+        "M486 672 Q468 700 494 714 Q468 738 496 752 Q474 778 502 790 L522 790 Q550 778 528 752 Q556 738 530 714 Q556 700 538 672 Z",
+        shadeOf("M512 660 L560 660 L560 800 L512 800 Z") + fold("M492 714 Q512 722 532 714") + fold("M496 752 Q512 760 528 752")
+      ) +
+      S("top-bow-l", "M512 676 L474 656 L470 694 Z") +
+      S("top-bow-r", "M512 676 L550 656 L554 694 Z") +
+      `<circle cx="512" cy="676" r="9" fill="{{trim}}" stroke="{{trimLine}}" stroke-width="2.5"/>`,
   }),
-  item("top", "top_turtleneck", "Turtleneck", { primary: "#0e7490" }, {
+  item("top", "top_tunic", "Traveller's tunic", { primary: "#3f5d3a", secondary: "#d9c3a0", trim: "#8f1d2c" }, {
     torso:
-      sym(P(LONG_SLEEVE)) +
-      P(TORSO) +
-      P("M458 468 L566 468 L582 562 Q512 594 442 562 Z") +
-      fold("M470 500 Q512 512 554 500") +
-      fold("M466 530 Q512 544 558 530") +
-      BODY_FOLDS,
+      sym(
+        P("top-sleeve", SLEEVE, shadeOf(SLEEVE_SHADE) + SLEEVE_FOLDS()) +
+          S("top-cuff", CUFF, shadeOf("M372 960 L402 960 L402 1012 L362 1012 Z", "secondary"))
+      ) +
+      P(
+        "top-body",
+        TUNIC,
+        shadeOf(SHIRT_SHADE) +
+          SHIRT_FOLDS() +
+          tone("M350 1052 L680 1052 L680 1110 L350 1110 Z", "secondary") +
+          stroke(zigzag(356, 670, 1086, 16), 4, "{{trim}}")
+      ) +
+      `<path d="M488 668 L512 764 L536 668 Q512 684 488 668 Z" fill="{{skin}}" stroke="{{primaryLine}}" stroke-width="3.5" stroke-linejoin="round"/>` +
+      stroke("M494 690 L530 712 M530 690 L494 712 M500 718 L524 736 M524 718 L500 736", 3, "{{trim}}"),
   }),
-  item("top", "top_blouse", "Collared blouse", { primary: "#f4f4f5", secondary: "#db2777", trim: "#c9a227" }, {
+  item("top", "top_turtleneck", "Fitted turtleneck", { primary: "#2f3440" }, {
     torso:
-      sym(P("M340 572 C286 570 262 640 276 720 C300 742 340 738 356 712 C360 670 366 636 378 606 Z")) +
-      P(TORSO) +
-      sym(S("M448 536 L512 574 L486 620 L428 562 Z")) +
-      dot(512, 660, 8) +
-      dot(512, 760, 8) +
-      dot(512, 860, 8),
+      sym(
+        P("top-sleeve", SLEEVE, shadeOf(SLEEVE_SHADE) + SLEEVE_FOLDS()) +
+          P("top-cuff", CUFF, shadeOf("M372 960 L402 960 L402 1012 L362 1012 Z") + stroke("M344 972 L342 1002 M360 974 L358 1004 M376 975 L374 1006", 2.5, "{{primaryDeep}}"))
+      ) +
+      P("top-body", SHIRT, shadeOf(SHIRT_SHADE) + SHIRT_FOLDS() + tone("M370 996 L660 996 L660 1040 L370 1040 Z", "primaryShade")) +
+      P(
+        "top-neck",
+        "M476 596 L548 596 L558 680 Q512 704 466 680 Z",
+        shadeOf("M520 590 L570 590 L570 700 L520 700 Z") +
+          fold("M474 624 Q512 636 550 624") +
+          fold("M470 654 Q512 668 554 654")
+      ),
   }),
-  item("top", "top_tank", "Tank top", { primary: "#9f1239" }, {
-    torso:
-      P("M372 600 C376 570 400 556 420 552 Q512 640 604 552 C624 556 648 570 652 600 L676 905 C690 950 700 985 696 1005 L328 1005 C324 985 334 950 348 905 Z") +
-      BODY_FOLDS,
+]
+
+// ---------------------------------------------------------------- vests and armour
+
+const CORSET = "M418 772 Q466 752 512 776 Q558 752 606 772 L612 866 C606 896 600 918 606 948 L620 1016 Q512 1046 404 1016 L418 948 C424 918 418 896 412 866 Z"
+const JERKIN = "M444 676 L500 716 L498 1062 L400 1062 C396 1010 402 960 414 920 C414 898 408 878 400 858 L378 764 C372 736 376 714 392 702 C408 692 426 684 444 676 Z"
+const BREASTPLATE = "M404 736 C432 708 470 700 512 704 C554 700 592 708 620 736 L614 880 C598 940 560 972 512 980 C464 972 426 940 410 880 Z"
+
+const VESTS: Asset[] = [
+  item("vest", "vest_corset", "Laced corset", { primary: "#8f1d2c", secondary: "#16141c", trim: "#d4af37" }, {
+    vest:
+      P(
+        "vest-corset",
+        CORSET,
+        shadeOf("M568 750 L660 750 L660 1060 L556 1060 C590 950 580 850 568 750 Z") +
+          lightOf("M430 790 C440 780 456 776 466 780 L452 1010 L426 1004 C432 930 428 850 430 790 Z") +
+          fold("M454 786 L448 1022") +
+          fold("M570 786 L576 1022") +
+          tone("M494 766 L530 766 L530 1046 L494 1046 Z", "secondary")
+      ) +
+      stroke("M494 800 L530 830 L494 860 L530 890 L494 920 L530 950 L494 980 L530 1010", 3.5, "{{trim}}") +
+      stroke("M418 772 Q466 752 512 776 Q558 752 606 772", 7, "{{trim}}") +
+      stroke("M404 1016 Q512 1046 620 1016", 6, "{{trim}}"),
   }),
-  item("top", "top_hoodie", "Hoodie", { primary: "#64748b", secondary: "#475569", trim: "#f4f4f5" }, {
-    torso:
-      S("M410 560 C404 500 462 478 512 478 C562 478 620 500 614 560 Q512 612 410 560 Z") +
-      sym(P(LONG_SLEEVE) + S(CUFF)) +
-      P(TORSO) +
-      S("M400 820 L624 820 L650 960 L374 960 Z") +
-      sym(stroke("M486 566 L478 670", 6, "{{trim}}")),
+  item("vest", "vest_jerkin", "Leather jerkin", { primary: "#6b4a32", secondary: "#3b2a22", trim: "#d9c3a0" }, {
+    vest:
+      sym(
+        P("vest-panel", JERKIN, shadeOf("M470 700 L520 700 L520 1070 L466 1070 Z") + fold("M420 800 Q440 880 430 960")) +
+          stitch("M490 728 L488 1052") +
+          stitch("M392 714 C404 760 410 800 404 860") +
+          S("vest-collar", "M444 676 L500 716 L488 744 L430 692 Z")
+      ) +
+      [820, 930].map((y) =>
+        S(`vest-strap-${y}`, `M466 ${y} L558 ${y} L558 ${y + 22} L466 ${y + 22} Z`) +
+          `<rect x="500" y="${y - 6}" width="24" height="34" rx="3" fill="none" stroke="{{trim}}" stroke-width="5"/>`
+      ).join(""),
   }),
-  item("top", "top_armor", "Chestplate", { primary: "#c7c7d0", secondary: "#6b7280", trim: "#c9a227" }, {
-    torso:
-      sym(S(LONG_SLEEVE)) +
-      P("M330 600 C340 556 400 544 512 560 C624 544 684 556 694 600 L668 880 C640 940 580 962 512 968 C444 962 384 940 356 880 Z") +
-      fold("M512 584 L512 950") +
-      fold("M380 760 Q512 806 644 760") +
-      sym(`<ellipse cx="352" cy="602" rx="64" ry="48" fill="{{primary}}" ${OUTLINE}/>` + dot(400, 650, 7) + dot(392, 850, 7)),
+  item("vest", "vest_cuirass", "Plate cuirass", { primary: "#c9ccd6", secondary: "#6b4a32", trim: "#d4af37" }, {
+    vest:
+      [2, 1, 0]
+        .map((i) =>
+          P(
+            `vest-fauld-${i}`,
+            `M${414 - i * 8} ${958 + i * 34} L${610 + i * 8} ${958 + i * 34} L${618 + i * 8} ${998 + i * 34} L${406 - i * 8} ${998 + i * 34} Z`,
+            shadeOf(`M540 940 L700 940 L700 1100 L540 1100 Z`) + stroke(`M${420 - i * 8} ${990 + i * 34} L${604 + i * 8} ${990 + i * 34}`, 3, "{{trim}}")
+          )
+        )
+        .join("") +
+      sym(S("vest-strap", "M394 780 L420 780 L426 870 L402 870 Z")) +
+      P(
+        "vest-plate",
+        BREASTPLATE,
+        shadeOf("M540 700 L640 700 L640 990 L540 990 C580 900 570 780 540 700 Z") +
+          lightOf("M438 740 C456 726 474 722 486 724 L470 930 C446 900 432 820 438 740 Z") +
+          fold("M512 712 L512 974") +
+          fold("M420 840 Q512 878 604 840")
+      ) +
+      stroke("M404 736 C432 708 470 700 512 704 C554 700 592 708 620 736", 7, "{{trim}}") +
+      sym(
+        P("vest-pauldron-2", "M346 742 C338 716 400 704 428 730 C436 758 426 792 400 802 C372 810 342 792 338 768 Z", shadeOf("M400 700 L460 700 L420 820 L380 820 Z")) +
+          P("vest-pauldron-1", "M358 704 C350 672 408 658 440 686 C452 710 444 752 420 766 C390 780 356 760 350 736 Z", shadeOf("M410 660 L470 660 L430 780 L400 780 Z") + lightOf("M372 696 C384 682 404 678 414 682 L394 740 C378 730 368 712 372 696 Z")) +
+          `<circle cx="398" cy="700" r="6" fill="{{trim}}"/><circle cx="384" cy="752" r="5" fill="{{trim}}"/>`
+      ),
   }, true),
-  item("top", "top_doublet", "Royal doublet", { primary: "#6d28d9", secondary: "#9f1239", trim: "#c9a227" }, {
-    torso:
-      sym(P(LONG_SLEEVE) + T(CUFF)) +
-      P(TORSO) +
-      stroke("M512 566 L512 1000", 8, "{{trim}}") +
-      S("M362 612 L420 588 L690 962 L638 994 Z") +
-      COLLAR,
+]
+
+// ---------------------------------------------------------------- belts
+
+const BELTS: Asset[] = [
+  item("belt", "belt_leather", "Belt and pouch", { primary: "#3b2a22", secondary: "#6b4a32", trim: "#d4af37" }, {
+    waist:
+      P("belt-band", "M400 944 Q512 972 624 944 L628 982 Q512 1012 396 982 Z", shadeOf("M560 930 L660 930 L660 1020 L560 1020 Z")) +
+      `<path d="M490 950 L534 950 L534 1002 L490 1002 Z M502 962 L502 990 L522 990 L522 962 Z" fill="{{trim}}" fill-rule="evenodd" stroke="{{trimLine}}" stroke-width="3"/>` +
+      S("belt-pouch", "M394 980 L454 988 L458 1066 C442 1080 410 1080 394 1066 Z", shadeOf("M430 980 L470 980 L470 1090 L430 1090 Z", "secondary")) +
+      P("belt-flap", "M390 976 L456 984 L454 1020 Q424 1036 392 1016 Z") +
+      `<circle cx="424" cy="1014" r="6" fill="{{trim}}" stroke="{{trimLine}}" stroke-width="2"/>`,
+  }),
+  item("belt", "belt_sash", "Silk sash", { primary: "#c2334a", secondary: "#d4af37" }, {
+    waist:
+      P("belt-wrap", "M404 900 Q512 930 620 900 L624 972 Q512 1006 400 972 Z", shadeOf("M560 890 L660 890 L660 1010 L560 1010 Z") + fold("M440 920 Q480 950 520 930") + fold("M500 960 Q560 980 600 950")) +
+      P("belt-tail-2", "M440 964 L456 1110 L476 1094 L494 1112 L464 960 Z", shadeOf("M456 960 L500 960 L500 1120 L462 1120 Z")) +
+      P("belt-tail-1", "M418 958 L372 1140 L402 1124 L424 1150 L446 962 Z", shadeOf("M420 960 L460 960 L420 1160 L396 1160 Z")) +
+      stroke("M376 1136 L402 1124 L424 1146 M458 1106 L476 1094 L492 1108", 5, "{{secondary}}") +
+      `<ellipse cx="432" cy="956" rx="30" ry="24" fill="{{primary}}" stroke="{{primaryLine}}" stroke-width="4"/>` +
+      fold("M414 950 Q432 966 450 952"),
   }),
 ]
 
-const bottoms: Asset[] = [
-  item("bottom", "bottom_trousers", "Trousers", { primary: "#18181b", secondary: "#3f2a1d", trim: "#c9a227" }, {
-    legs: sym(P(PANTS_LEG) + fold("M452 1060 L446 1400")) + S(WAISTBAND) + T("M494 978 L530 978 L530 1012 L494 1012 Z"),
-  }),
-  item("bottom", "bottom_shorts", "Shorts", { primary: "#1e3a8a" }, {
-    legs: sym(P("M330 985 L516 985 L510 1150 L370 1150 Z")) + P(WAISTBAND),
-  }),
-  item("bottom", "bottom_skirt", "Skirt", { primary: "#9f1239", secondary: "#18181b" }, {
-    legs: P(SKIRT) + fold("M430 1010 L400 1190") + fold("M594 1010 L624 1190") + S(WAISTBAND),
-  }),
-  item("bottom", "bottom_long_skirt", "Long skirt", { primary: "#047857", trim: "#c9a227" }, {
-    legs: P("M334 975 L690 975 L760 1440 L264 1440 Z") + fold("M430 1020 L380 1420") + fold("M594 1020 L644 1420") + T("M266 1408 L758 1408 L762 1444 L262 1444 Z"),
-  }),
-  item("bottom", "bottom_jeans", "Jeans", { primary: "#3a5a8c", secondary: "#c9a227" }, {
-    legs:
-      sym(P(PANTS_LEG) + stroke("M430 1030 L440 1420", 4, "{{secondary}}") + stroke("M350 1000 Q380 1060 440 1040", 4, "{{secondary}}")) +
-      P(WAISTBAND),
-  }),
-  item("bottom", "bottom_leggings", "Leggings", { primary: "#18181b" }, {
-    legs: sym(P("M336 985 L512 985 L500 1190 L486 1428 L410 1428 L386 1190 Z")) + P(WAISTBAND),
-  }),
-  item("bottom", "bottom_cargo", "Cargo pants", { primary: "#4d5d3a", secondary: "#3f4c2f" }, {
-    legs: sym(P(PANTS_LEG) + S("M336 1120 L398 1120 L402 1214 L344 1214 Z")) + S(WAISTBAND),
-  }),
-  item("bottom", "bottom_pleated", "Pleated skirt", { primary: "#1e3a8a" }, {
-    legs:
-      P(SKIRT) +
-      [376, 424, 472, 512, 552, 600, 648].map((x) => fold(`M${x + (x - 512) * 0.05} 1000 L${x + (x - 512) * 0.33} 1196`)).join("") +
-      P(WAISTBAND),
-  }),
-]
+// ---------------------------------------------------------------- coats and cloaks
 
-const dresses: Asset[] = [
-  item("dress", "dress_simple", "Simple dress", { primary: "#0e7490", trim: "#f4f4f5" }, {
-    torso: sym(P(SHORT_SLEEVE)) + P("M360 890 L664 890 L740 1230 L284 1230 Z") + P(BODICE) + T("M358 880 L666 880 L664 910 L360 910 Z") + fold("M450 930 L410 1220") + fold("M574 930 L614 1220"),
-  }),
-  item("dress", "dress_ballgown", "Ball gown", { primary: "#db2777", secondary: "#f9a8d4", trim: "#c9a227" }, {
-    torso:
-      P("M364 880 L660 880 C760 1000 850 1250 880 1480 L144 1480 C174 1250 264 1000 364 880 Z") +
-      S("M470 900 L554 900 L640 1476 L384 1476 Z") +
-      fold("M400 960 L270 1460") +
-      fold("M624 960 L754 1460") +
-      P(STRAPLESS) +
-      T("M362 876 L662 876 L660 904 L364 904 Z"),
-  }),
-  item("dress", "dress_robe", "Mage robe", { primary: "#312e81", secondary: "#9f1239", trim: "#c9a227" }, {
-    torso:
-      sym(P("M342 570 C296 584 276 640 270 700 L200 1060 L350 1060 L354 724 C360 682 368 644 380 608 Z") + T("M204 1034 L350 1034 L350 1060 L200 1060 Z")) +
-      P("M322 585 C326 552 380 540 448 536 Q512 566 576 536 C644 540 698 552 702 585 L690 905 C730 1100 760 1300 770 1470 L254 1470 C264 1300 294 1100 334 905 Z") +
-      stroke("M512 566 L512 1466", 10, "{{trim}}") +
-      S("M340 870 L684 870 L688 912 L336 912 Z") +
-      COLLAR,
-  }),
-  item("dress", "dress_sundress", "Sundress", { primary: "#fcd34d", secondary: "#f4f4f5" }, {
-    torso:
-      P("M360 890 L664 890 L760 1160 L264 1160 Z") +
-      P("M380 610 C384 590 404 580 420 578 Q512 650 604 578 C620 580 640 590 644 610 L664 900 L360 900 Z") +
-      [
-        [430, 980], [520, 1010], [600, 960], [380, 1100], [470, 1100], [570, 1090], [680, 1110], [512, 740], [440, 820], [590, 820],
-      ].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" fill="{{secondary}}"/>`).join(""),
-  }),
-  item("dress", "dress_gown", "Evening gown", { primary: "#18181b", trim: "#c7c7d0" }, {
-    torso:
-      P("M352 640 Q430 606 512 640 Q594 606 672 640 L664 900 C690 1000 680 1200 700 1330 C730 1400 760 1450 780 1478 L244 1478 C264 1450 294 1400 324 1330 C344 1200 334 1000 360 900 Z") +
-      stroke("M354 642 Q430 608 512 642 Q594 608 670 642", 7, "{{trim}}") +
-      fold("M560 1000 Q580 1250 640 1470"),
-  }),
-]
+const COAT_PANEL = "M450 672 L504 764 L492 1300 C440 1314 376 1306 322 1290 C336 1150 358 1030 386 930 C398 890 396 862 388 842 L368 762 C362 734 366 712 382 702 C402 690 428 680 450 672 Z"
+const CLOAK_BACK = "M390 688 C300 800 240 1100 216 1452 Q364 1488 512 1472 Q660 1488 808 1452 C784 1100 724 800 634 688 Z"
+const JACKET = "M452 676 L500 740 L500 932 L394 938 C392 912 398 892 404 872 L376 762 C370 734 374 712 390 702 C410 690 432 682 452 676 Z"
 
-const coats: Asset[] = [
-  item("coat", "coat_long", "Long coat", { primary: "#18181b", secondary: "#c7c7d0", trim: "#8b5cf6" }, {
-    outer: sym(P(COAT_PANEL) + P(LONG_SLEEVE) + S(LAPEL) + dot(472, 760, 9) + dot(468, 880, 9)),
+const COATS: Asset[] = [
+  item("coat", "coat_noble", "Noble long coat", { primary: "#1f2f6b", secondary: "#f2efe8", trim: "#d4af37" }, {
+    outer: sym(
+      P("coat-panel", COAT_PANEL, shadeOf("M438 760 L504 760 L494 1320 L430 1320 Z") + fold("M400 960 C392 1080 380 1180 370 1296") + fold("M450 900 C446 1040 440 1180 436 1300") + lightOf("M384 710 C402 698 424 690 440 690 L396 860 C380 820 372 760 384 710 Z")) +
+        stroke("M504 764 L492 1300 C440 1314 376 1306 322 1290", 9, "{{trim}}") +
+        S("coat-lapel", "M450 672 L504 764 L486 832 L426 700 Z", shadeOf("M470 720 L510 760 L490 840 Z", "secondary")) +
+        P("coat-sleeve", COAT_SLEEVE, shadeOf("M394 690 L456 690 L412 1010 L378 1010 Z") + SLEEVE_FOLDS()) +
+        S("coat-cuff", "M316 948 L406 954 L404 1012 L314 1006 Z", shadeOf("M370 940 L410 940 L410 1020 L364 1020 Z", "secondary")) +
+        stroke("M316 948 L406 954", 6, "{{trim}}") +
+        button(340, 980, 6, "trim") +
+        button(372, 983, 6, "trim") +
+        T("coat-epaulette", "M370 706 C390 686 432 680 452 690 L442 718 C414 714 392 718 378 730 Z") +
+        stroke("M378 730 L372 762 M392 724 L388 758 M408 720 L406 754", 3, "{{trim}}") +
+        [860, 940, 1020, 1100].map((y) => button(480, y, 7, "trim")).join("")
+    ),
   }),
-  item("coat", "coat_cloak", "Cloak", { primary: "#4c1d95", trim: "#c9a227" }, {
-    back: P("M330 570 C250 700 200 1100 180 1470 L844 1470 C824 1100 774 700 694 570 Z"),
+  item("coat", "coat_cloak", "Travelling cloak", { primary: "#16141c", secondary: "#6b3fa0", trim: "#c9ccd6" }, {
+    back:
+      S("coat-lining", CLOAK_BACK, shadeOf("M420 700 L604 700 L640 1480 L384 1480 Z", "secondary") + fold("M440 900 C420 1100 400 1300 390 1470", "secondary") + fold("M584 900 C604 1100 624 1300 634 1470", "secondary")) +
+      sym(P("coat-edge", "M390 688 C300 800 240 1100 216 1452 L262 1460 C288 1100 336 822 426 700 Z", shadeOf("M300 800 L360 800 L300 1470 L240 1470 Z"))),
     outer:
-      sym(P("M326 568 C356 546 420 538 452 540 L424 646 C380 626 348 604 326 568 Z")) +
-      stroke("M448 556 Q512 588 576 556", 6, "{{trim}}") +
-      dot(512, 572, 16),
+      sym(P("coat-mantle", "M382 692 C414 672 462 664 492 670 L482 730 C448 782 402 814 348 830 C338 780 348 718 382 692 Z", shadeOf("M440 680 L500 680 L480 740 L420 790 Z") + fold("M372 760 Q400 760 436 740"))) +
+      stroke("M470 722 Q512 760 554 722", 5, "{{trim}}") +
+      sym(`<circle cx="468" cy="716" r="15" fill="{{trim}}" stroke="{{trimLine}}" stroke-width="3"/><circle cx="468" cy="716" r="6" fill="{{secondary}}"/>`),
   }),
-  item("coat", "coat_jacket", "Jacket", { primary: "#7c2d12", secondary: "#3f2a1d", trim: "#c7c7d0" }, {
-    outer: sym(P(JACKET_PANEL) + P(LONG_SLEEVE) + S(LAPEL) + dot(482, 800, 7)),
-  }),
-  item("coat", "coat_royal", "Royal coat", { primary: "#9f1239", secondary: "#f4f4f5", trim: "#c9a227" }, {
-    outer: sym(
-      P(COAT_PANEL) +
-        P(LONG_SLEEVE) +
-        stroke("M448 542 L500 640 L480 1244", 26, "{{secondary}}") +
-        stroke("M304 1244 L470 1244", 8, "{{trim}}") +
-        T("M322 560 C340 540 380 536 410 540 L404 570 C376 568 348 574 326 588 Z") +
-        T(CUFF)
-    ),
-  }),
-  item("coat", "coat_trench", "Trench coat", { primary: "#a8875a", secondary: "#8b6d45", trim: "#3f2a1d" }, {
-    outer: sym(
-      P("M322 580 C326 552 380 540 448 536 L500 640 L486 1200 L306 1200 C306 1060 330 950 346 905 Z") +
-        P(LONG_SLEEVE) +
-        S("M430 540 L500 640 L456 740 L398 580 Z") +
-        S("M336 872 L494 872 L492 916 L334 916 Z") +
-        dot(474, 700, 8)
-    ) + T("M494 866 L530 866 L530 922 L494 922 Z"),
+  item("coat", "coat_jacket", "Cropped jacket", { primary: "#8f1d2c", secondary: "#16141c", trim: "#c9ccd6" }, {
+    outer:
+      sym(
+        P("coat-sleeve", COAT_SLEEVE, shadeOf("M394 690 L456 690 L412 1010 L378 1010 Z") + SLEEVE_FOLDS() + fold("M334 960 Q364 972 400 964")) +
+          S("coat-cuff", "M320 972 L402 978 L400 1010 L318 1004 Z", stroke("M334 976 L332 1004 M352 977 L350 1006 M370 978 L368 1008 M388 979 L386 1008", 2.5, "{{secondaryLight}}")) +
+          P("coat-panel", JACKET, shadeOf("M456 700 L506 700 L506 940 L452 940 Z") + fold("M410 800 Q430 850 420 900")) +
+          S("coat-hem", "M390 906 L502 910 L502 942 L388 938 Z", stroke("M404 912 L404 936 M424 912 L424 938 M444 912 L444 938 M464 912 L464 938 M484 912 L484 938", 2.5, "{{secondaryLight}}")) +
+          S("coat-collar", "M450 666 C428 656 400 668 392 690 L468 764 L502 740 Z", shadeOf("M440 690 L500 740 L470 764 Z", "secondary")) +
+          stroke("M420 826 L468 830", 3, "{{primaryDeep}}")
+      ) + stroke("M512 744 L512 940", 4, "{{trim}}", 'stroke-dasharray="5 5"'),
   }),
 ]
 
-const shoes: Asset[] = [
-  item("shoes", "shoes_boots", "Boots", { primary: "#3f2a1d", secondary: "#18181b", trim: "#c9a227" }, {
-    feet: sym(P(BOOT) + S(SOLE) + T("M404 1300 L490 1300 L490 1322 L404 1322 Z")),
+// ---------------------------------------------------------------- bottoms
+
+const PANT = "M400 980 L512 980 L512 1050 C508 1112 504 1172 500 1232 C498 1302 498 1372 500 1432 L450 1432 C446 1372 440 1302 434 1242 C424 1172 406 1102 398 1040 Z"
+const FLARE = "M400 980 L512 980 L512 1050 C508 1112 504 1172 500 1222 C506 1300 520 1380 532 1446 L410 1446 C420 1380 434 1300 440 1236 C428 1172 408 1102 398 1040 Z"
+const WAISTBAND = "M394 964 L630 964 L634 1004 L390 1004 Z"
+
+/** A small five-dot flower for printed fabric. */
+const printFlower = (x: number, y: number) =>
+  [0, 72, 144, 216, 288]
+    .map((a) => {
+      const r = (a * Math.PI) / 180
+      return `<circle cx="${(x + Math.cos(r) * 9).toFixed(1)}" cy="${(y + Math.sin(r) * 9).toFixed(1)}" r="6" fill="{{secondary}}"/>`
+    })
+    .join("") + `<circle cx="${x}" cy="${y}" r="4" fill="{{primaryDeep}}"/>`
+
+const BOTTOMS: Asset[] = [
+  item("bottom", "bottom_trousers", "Tailored trousers", { primary: "#2f3440", secondary: "#16141c" }, {
+    legs:
+      sym(P("bottom-leg", PANT, shadeOf("M478 980 L526 980 L508 1446 L480 1446 Z") + fold("M456 1064 C458 1200 470 1320 474 1430") + fold("M440 1230 Q468 1244 496 1236"))) +
+      S("bottom-waist", WAISTBAND) +
+      stroke("M512 1004 L512 1066", 3, "{{primaryLine}}"),
   }),
-  item("shoes", "shoes_sneakers", "Sneakers", { primary: "#1e3a8a", secondary: "#e5e7eb", trim: "#f4f4f5" }, {
-    feet: sym(
-      P("M406 1398 L488 1398 L492 1446 C492 1470 484 1478 470 1478 L378 1478 C360 1478 356 1454 374 1444 C392 1434 404 1428 406 1398 Z") +
-        S("M360 1462 L494 1462 L494 1490 L358 1490 Z") +
-        stroke("M420 1420 L470 1414 M416 1436 L468 1430", 4, "{{trim}}")
+  item("bottom", "bottom_flared", "Printed flares", { primary: "#5b6472", secondary: "#f2efe8" }, {
+    legs:
+      sym(
+        P(
+          "bottom-leg",
+          FLARE,
+          shadeOf("M478 980 L526 980 L540 1456 L490 1456 Z") +
+            [[448, 1096], [432, 1196], [476, 1290], [446, 1380], [500, 1360], [466, 1160]].map(([x, y]) => printFlower(x, y)).join("") +
+            stroke("M440 1110 C420 1170 470 1230 450 1300 C436 1350 480 1380 470 1440", 3, "{{secondary}}", 'opacity=".7"')
+        )
+      ) + S("bottom-waist", WAISTBAND),
+  }),
+  item("bottom", "bottom_ruffle", "Tiered ruffle skirt", { primary: "#16141c", secondary: "#8f1d2c", trim: "#f2efe8" }, {
+    legs:
+      S(
+        "bottom-tier2",
+        "M384 1040 L640 1040 L702 1210 Q672 1232 642 1212 Q608 1236 578 1214 Q546 1238 512 1216 Q478 1238 446 1214 Q416 1236 382 1212 Q352 1232 322 1210 Z",
+        shadeOf("M560 1030 L720 1030 L720 1240 L600 1240 Z", "secondary") + fold("M430 1080 L400 1200", "secondary") + fold("M594 1080 L624 1200", "secondary") + fold("M512 1080 L512 1200", "secondary")
+      ) +
+      stroke("M330 1204 Q352 1226 382 1206 Q416 1230 446 1208 Q478 1232 512 1210 Q546 1232 578 1208 Q608 1230 642 1206 Q672 1226 694 1204", 4, "{{trim}}", 'stroke-dasharray="2 8"') +
+      P(
+        "bottom-tier1",
+        "M402 966 L622 966 L664 1116 Q638 1136 612 1118 Q584 1140 558 1120 Q532 1142 512 1122 Q492 1142 466 1120 Q440 1140 412 1118 Q386 1136 360 1116 Z",
+        shadeOf("M560 950 L680 950 L680 1140 L580 1140 Z") + fold("M440 1000 L420 1110") + fold("M584 1000 L604 1110") + fold("M512 1000 L512 1116")
+      ) +
+      stroke("M366 1112 Q388 1130 412 1114 Q440 1134 466 1116 Q492 1136 512 1118 Q532 1136 558 1116 Q584 1134 612 1114 Q638 1130 658 1112", 4, "{{trim}}", 'stroke-dasharray="2 8"') +
+      S("bottom-waist", "M396 956 L628 956 L630 990 L394 990 Z"),
+  }),
+]
+
+// ---------------------------------------------------------------- dresses
+
+const FLEUR = (x: number, y: number) =>
+  `<path d="M${x} ${y} C${x - 12} ${y - 30} ${x + 4} ${y - 50} ${x} ${y - 70} C${x + 18} ${y - 50} ${x + 16} ${y - 26} ${x} ${y} Z" fill="{{trim}}"/>` +
+  stroke(`M${x - 4} ${y - 10} C${x - 30} ${y - 16} ${x - 34} ${y - 40} ${x - 20} ${y - 52} M${x + 4} ${y - 10} C${x + 30} ${y - 16} ${x + 34} ${y - 40} ${x + 20} ${y - 52}`, 4, "{{trim}}")
+
+const DRESSES: Asset[] = [
+  item("dress", "dress_royal", "Draped royal gown", { primary: "#8f1d2c", secondary: "#5a1220", trim: "#d4af37" }, {
+    torso:
+      S(
+        "dress-under",
+        "M408 930 C360 1060 300 1260 250 1472 L774 1472 C724 1260 664 1060 616 930 Z",
+        shadeOf("M560 920 L800 920 L800 1480 L600 1480 Z", "secondary") + fold("M560 1000 C590 1160 640 1320 690 1466", "secondary") + fold("M470 1000 C450 1160 420 1320 400 1466", "secondary")
+      ) +
+      stroke("M254 1462 L770 1462", 10, "{{trim}}") +
+      P(
+        "dress-drape",
+        "M412 930 L616 930 C640 1000 652 1060 642 1120 C604 1220 566 1330 546 1446 Q474 1470 404 1452 Q342 1472 282 1452 C322 1262 372 1082 412 930 Z",
+        shadeOf("M520 930 L660 930 L620 1200 L560 1460 L500 1460 C520 1300 560 1120 520 930 Z") +
+          fold("M470 980 C450 1120 420 1280 400 1440") +
+          fold("M400 1000 C380 1140 350 1300 330 1446") +
+          FLEUR(330, 1430) + FLEUR(410, 1440) + FLEUR(490, 1432)
+      ) +
+      stroke("M616 930 C640 1000 652 1060 642 1120 C604 1220 566 1330 546 1446", 10, "{{trim}}") +
+      stroke("M286 1448 Q342 1468 404 1450 Q474 1466 544 1444", 10, "{{trim}}") +
+      sym(P("dress-sleeve", "M368 734 C370 704 418 698 448 722 C448 760 414 792 370 792 C352 778 354 752 368 734 Z", shadeOf("M410 700 L460 700 L430 800 L390 800 Z") + fold("M380 750 Q400 770 430 760"))) +
+      sym(stroke("M370 790 C390 794 420 780 440 756", 6, "{{trim}}")) +
+      P(
+        "dress-bodice",
+        "M414 776 C440 756 480 764 512 786 C544 764 584 756 610 776 L604 868 C598 898 594 918 602 948 L422 948 C430 918 426 898 420 868 Z",
+        shadeOf("M560 760 L640 760 L640 960 L570 960 C590 900 580 820 560 760 Z") +
+          lightOf("M432 790 C446 780 462 778 470 782 L456 940 L432 940 C438 890 434 830 432 790 Z") +
+          stroke("M470 820 C490 800 512 830 512 850 C512 830 534 800 554 820", 3, "{{primaryDeep}}")
+      ) +
+      stroke("M414 776 C440 756 480 764 512 786 C544 764 584 756 610 776", 7, "{{trim}}") +
+      T("dress-waist", "M418 916 L606 916 L604 950 L420 950 Z") +
+      `<path d="M512 906 L530 932 L512 958 L494 932 Z" fill="#3fb6c8" stroke="{{trimLine}}" stroke-width="3"/><path d="M506 922 L512 914 L518 924 Z" fill="#dff8fb"/>`,
+  }),
+  item("dress", "dress_robe", "Mage's robe", { primary: "#1f2f6b", secondary: "#16141c", trim: "#d4af37" }, {
+    torso:
+      sym(
+        P("dress-sleeve", "M400 688 C360 696 340 760 332 840 L282 1090 C326 1112 386 1110 414 1088 L406 872 L418 782 C422 752 428 732 440 714 Z", shadeOf("M390 690 L452 690 L420 1100 L370 1100 Z") + fold("M340 900 C320 980 310 1040 300 1090") + fold("M380 880 C372 960 372 1040 376 1100")) +
+          `<ellipse cx="348" cy="1096" rx="62" ry="14" fill="{{secondary}}"/>` +
+          stroke("M284 1090 C326 1112 386 1110 414 1088", 8, "{{trim}}")
+      ) +
+      P(
+        "dress-body",
+        "M470 662 Q512 690 554 662 C580 676 608 688 634 700 C652 712 656 732 650 758 L630 860 C640 1000 690 1250 720 1470 L304 1470 C334 1250 384 1000 394 860 L374 758 C368 732 372 712 390 700 C416 688 444 676 470 662 Z",
+        shadeOf("M592 660 C640 800 620 1000 700 1480 L760 1480 L760 660 Z") + fold("M420 1000 C400 1180 370 1340 350 1460") + fold("M604 1000 C624 1180 654 1340 674 1460")
+      ) +
+      S("dress-panel", "M486 700 L538 700 L572 1470 L452 1470 Z", shadeOf("M520 700 L580 700 L600 1480 L530 1480 Z", "secondary")) +
+      stroke("M486 700 L452 1470 M538 700 L572 1470", 6, "{{trim}}") +
+      stroke("M308 1458 L716 1458", 8, "{{trim}}") +
+      stroke("M500 900 L524 920 L500 940 M524 900 L524 940 M498 1040 L526 1040 M512 1026 L512 1070 M500 1180 L524 1206 L500 1232 M494 1320 L530 1320 L512 1356 Z", 4, "{{trim}}") +
+      S("dress-collar", "M460 636 L564 636 L576 700 Q512 726 448 700 Z", shadeOf("M520 630 L590 630 L590 720 L520 720 Z", "secondary")) +
+      stroke("M448 700 Q512 726 576 700", 6, "{{trim}}"),
+  }),
+]
+
+// ---------------------------------------------------------------- gloves
+
+const GLOVES: Asset[] = [
+  item("gloves", "gloves_fingerless", "Fingerless gloves", { primary: "#16141c", trim: "#c9ccd6" }, {
+    gloves: sym(
+      P("gloves-hand", "M342 948 L394 952 C400 988 400 1018 394 1040 C382 1054 352 1054 336 1042 C330 1010 332 980 342 948 Z", shadeOf("M372 940 L404 940 L404 1060 L366 1060 Z")) +
+        stroke("M338 972 L396 976", 5, "{{trim}}") +
+        `<circle cx="380" cy="974" r="4" fill="{{trim}}"/>`
     ),
   }),
-  item("shoes", "shoes_heels", "Heels", { primary: "#9f1239" }, {
-    feet: sym(
-      P("M470 1450 L484 1450 L482 1496 L472 1496 Z") +
-        P("M412 1418 L484 1418 L486 1452 L480 1478 L470 1478 L466 1458 C440 1462 400 1476 380 1478 C364 1478 366 1460 380 1452 C400 1440 408 1430 412 1418 Z")
-    ),
-  }),
-  item("shoes", "shoes_tall_boots", "Knee-high boots", { primary: "#18181b", secondary: "#27272a", trim: "#c7c7d0" }, {
-    feet: sym(
-      P("M392 1170 L498 1170 L492 1440 C494 1470 486 1482 470 1484 L376 1484 C360 1484 356 1462 372 1448 C390 1434 396 1428 398 1410 Z") +
-        S(SOLE) +
-        T("M390 1170 L500 1170 L498 1196 L392 1196 Z")
-    ),
-  }),
-  item("shoes", "shoes_flats", "Flats", { primary: "#db2777", trim: "#f4f4f5" }, {
-    feet: sym(
-      P("M408 1440 L486 1440 L488 1468 C486 1482 476 1484 466 1484 L380 1484 C362 1484 360 1464 378 1456 C396 1450 404 1446 408 1440 Z") +
-        dot(412, 1452, 8)
-    ),
-  }),
-  item("shoes", "shoes_greaves", "Armoured greaves", { primary: "#c7c7d0", secondary: "#374151", trim: "#c9a227" }, {
-    feet: sym(
-      P("M398 1230 L496 1230 L492 1440 C494 1470 486 1482 470 1484 L376 1484 C360 1484 356 1462 372 1448 C390 1434 398 1428 400 1410 Z") +
-        S(SOLE) +
-        fold("M404 1300 L490 1300") +
-        fold("M402 1370 L490 1370") +
-        dot(446, 1250, 12)
+  item("gloves", "gloves_gauntlet", "Plate gauntlets", { primary: "#c9ccd6", secondary: "#6b4a32", trim: "#d4af37" }, {
+    gloves: sym(
+      P("gloves-cuff", "M324 898 L402 904 L398 1000 L334 996 Z", shadeOf("M372 890 L410 890 L410 1010 L366 1010 Z") + lightOf("M338 910 L352 910 L350 990 L342 990 Z")) +
+        stroke("M324 898 L402 904", 6, "{{trim}}") +
+        P("gloves-plate", "M336 994 C328 1020 330 1048 342 1062 C354 1076 380 1074 390 1056 C398 1038 398 1014 396 996 Z", shadeOf("M372 990 L404 990 L404 1080 L366 1080 Z") + fold("M338 1022 Q364 1030 394 1024") + fold("M340 1044 Q364 1052 390 1046"))
     ),
   }, true),
 ]
 
-export const CLOTHING_ASSETS: Asset[] = [...tops, ...bottoms, ...dresses, ...coats, ...shoes]
+// ---------------------------------------------------------------- shoes
+
+const BOOT = "M440 1196 L506 1196 L500 1420 C502 1440 500 1458 494 1474 C470 1488 430 1490 414 1478 C404 1466 418 1450 438 1442 C446 1432 446 1418 444 1400 Z"
+const SOLE = "M408 1468 C430 1486 474 1488 500 1472 L500 1492 L408 1492 Z"
+const LOW_SHOE = "M452 1418 L500 1418 C502 1440 500 1458 494 1474 C470 1488 430 1490 414 1478 C404 1466 418 1450 440 1442 C448 1436 452 1428 452 1418 Z"
+
+const SHOES: Asset[] = [
+  item("shoes", "shoes_tall", "Tall boots", { primary: "#16141c", secondary: "#3b2a22", trim: "#c9ccd6" }, {
+    feet: sym(
+      P("shoes-boot", BOOT, shadeOf("M478 1190 L512 1190 L506 1490 L476 1490 Z") + lightOf("M450 1250 L462 1250 L458 1420 L448 1420 Z") + fold("M446 1320 Q474 1330 500 1322")) +
+        S("shoes-fold", "M434 1188 L512 1188 L508 1236 L438 1236 Z") +
+        S("shoes-sole", SOLE) +
+        stroke("M444 1368 L502 1374", 6, "{{trim}}") +
+        `<rect x="464" y="1360" width="16" height="20" rx="2" fill="none" stroke="{{trim}}" stroke-width="4"/>`
+    ),
+  }),
+  item("shoes", "shoes_ankle", "Laced ankle boots", { primary: "#6b4a32", secondary: "#2a1d15", trim: "#d9c3a0" }, {
+    feet: sym(
+      P("shoes-boot", "M448 1340 L502 1340 L500 1420 C502 1440 500 1458 494 1474 C470 1488 430 1490 414 1478 C404 1466 418 1450 438 1442 C446 1432 448 1418 448 1400 Z", shadeOf("M478 1336 L512 1336 L506 1490 L476 1490 Z")) +
+        S("shoes-sole", SOLE) +
+        stroke("M456 1356 L494 1374 M494 1356 L456 1374 M456 1382 L494 1400 M494 1382 L456 1400", 3, "{{trim}}")
+    ),
+  }),
+  item("shoes", "shoes_maryjane", "Mary Janes", { primary: "#16141c", secondary: "#f2efe8", trim: "#d4af37" }, {
+    feet: sym(
+      S("shoes-sock", "M450 1296 L500 1296 L498 1434 L454 1434 Z", shadeOf("M480 1290 L510 1290 L506 1440 L478 1440 Z", "secondary")) +
+        stroke("M448 1300 Q462 1290 474 1300 Q488 1290 502 1300", 5, "{{secondary}}") +
+        P("shoes-shoe", LOW_SHOE, shadeOf("M470 1420 L510 1420 L506 1492 L466 1492 Z") + lightOf("M424 1456 L446 1450 L440 1462 Z")) +
+        stroke("M446 1440 L500 1432", 5, "{{primaryLine}}") +
+        `<circle cx="472" cy="1437" r="5" fill="{{trim}}"/>`
+    ),
+  }),
+  item("shoes", "shoes_greaves", "Armoured greaves", { primary: "#c9ccd6", secondary: "#2f3440", trim: "#d4af37" }, {
+    feet: sym(
+      P("shoes-shin", "M434 1180 C458 1168 492 1168 512 1180 L504 1404 L444 1404 Z", shadeOf("M480 1170 L520 1170 L510 1410 L476 1410 Z") + lightOf("M446 1200 L458 1200 L456 1390 L450 1390 Z")) +
+        P("shoes-sabaton", "M444 1396 L504 1396 C506 1436 502 1460 496 1476 C470 1490 430 1492 412 1480 C402 1466 418 1450 440 1440 Z", shadeOf("M476 1390 L512 1390 L508 1496 L472 1496 Z") + fold("M430 1452 Q460 1444 500 1446") + fold("M446 1420 Q474 1416 504 1420")) +
+        `<ellipse cx="474" cy="1196" rx="36" ry="28" fill="{{primary}}" stroke="{{primaryLine}}" stroke-width="4"/>` +
+        `<circle cx="474" cy="1196" r="8" fill="{{trim}}" stroke="{{trimLine}}" stroke-width="2"/>`
+    ),
+  }, true),
+]
+
+export const CLOTHING_ASSETS: Asset[] = [...TOPS, ...VESTS, ...BELTS, ...COATS, ...BOTTOMS, ...DRESSES, ...GLOVES, ...SHOES]

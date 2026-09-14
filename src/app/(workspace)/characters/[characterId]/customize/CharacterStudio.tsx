@@ -23,7 +23,9 @@ import {
 } from "lucide-react"
 import { saveAppearance } from "@/server/actions/characters"
 import {
+  BUST_VIEW,
   CATEGORIES,
+  PRESETS,
   COLOR_SLOTS,
   DEFAULT_APPEARANCE,
   EYE_COLORS,
@@ -56,7 +58,7 @@ const CATEGORY_ICONS: Record<Category, typeof Smile> = {
   Clothes: Shirt,
   Accessories: Gem,
   Weapons: Sword,
-  Special: Sparkles,
+  Fantasy: Sparkles,
 }
 
 const COLOR_LABELS: Record<ColorSlot, string> = { primary: "Main", secondary: "Accent", trim: "Trim" }
@@ -264,7 +266,8 @@ export default function CharacterStudio({
 
         <section
           aria-label="Preview"
-          className="relative order-1 h-[46dvh] shrink-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,rgba(124,92,255,0.22),transparent_65%)] lg:order-2 lg:h-auto lg:min-h-0"
+          // Neutral on purpose: the character's colours are theirs, not the app's.
+          className="relative order-1 h-[46dvh] shrink-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_40%,rgba(255,255,255,0.09),transparent_65%)] lg:order-2 lg:h-auto lg:min-h-0"
         >
           <div className="absolute inset-x-0 bottom-[4%] mx-auto h-[5%] w-1/3 rounded-[50%] bg-black/50 blur-md" />
           <div className="flex h-full items-center justify-center overflow-hidden">
@@ -319,6 +322,34 @@ export default function CharacterStudio({
         </section>
 
         <div className="order-3 min-h-0 flex-1 space-y-7 overflow-y-auto p-4 lg:border-l lg:border-line lg:p-5">
+          {category === "Body" && (
+            <section aria-labelledby="slot-presets">
+              <div className="mb-2.5 flex items-baseline justify-between gap-2">
+                <h2 id="slot-presets" className="text-sm font-semibold text-ink">
+                  Starting looks
+                </h2>
+                <span className="truncate text-xs text-muted">Pick one, then make it yours</span>
+              </div>
+              <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
+                {PRESETS.map((preset) => (
+                  <Thumb
+                    key={preset.id}
+                    label={preset.name}
+                    selected={JSON.stringify(preset.appearance) === JSON.stringify(current)}
+                    onSelect={() => commit(preset.appearance)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={svgDataUri(composeSvg(preset.appearance, BUST_VIEW))}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-contain"
+                    />
+                  </Thumb>
+                ))}
+              </div>
+            </section>
+          )}
           {SLOTS.filter((s) => s.category === category).map((slot) => (
             <SlotSection
               key={slot.id}
@@ -439,7 +470,7 @@ function Thumb({
         selected ? "border-accent ring-2 ring-accent/60" : "border-line hover:border-accent/50"
       }`}
     >
-      <span className="flex aspect-square items-center justify-center bg-[radial-gradient(circle_at_50%_40%,rgba(124,92,255,0.14),transparent_70%)] p-1.5">
+      <span className="flex aspect-square items-center justify-center bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.08),transparent_70%)] p-1.5">
         {children}
       </span>
       <span className={`truncate px-1.5 pb-1.5 text-[11px] ${selected ? "text-ink" : "text-muted"}`}>{label}</span>
