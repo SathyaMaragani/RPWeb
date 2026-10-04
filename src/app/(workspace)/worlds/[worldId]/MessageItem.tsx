@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2, RotateCcw } from "lucide-react"
+import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
 import { Avatar } from "@/components/layout/Sidebar"
 import type { SerializedMessage } from "@/lib/messages"
 import { characterColor } from "@/lib/characters"
@@ -26,6 +26,7 @@ export default function MessageItem({
   onEdit,
   onDelete,
   onRegenerate,
+  onSwipe,
 }: {
   message: SerializedMessage
   showHeader: boolean
@@ -35,6 +36,8 @@ export default function MessageItem({
   onDelete: (id: string) => Promise<void>
   /** Only on the latest message, when a model wrote it. */
   onRegenerate?: () => void
+  /** Only on the latest AI reply: show another of its versions. */
+  onSwipe?: (index: number) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -228,6 +231,36 @@ export default function MessageItem({
           </div>
         ) : (
           <MessageBody content={message.content} explicitType={explicitType} />
+        )}
+
+        {onSwipe && !editing && (message.swipeCount > 1 || onRegenerate) && (
+          <div className="mt-2 flex items-center gap-1 text-[11px] text-muted">
+            <button
+              type="button"
+              onClick={() => onSwipe(message.swipeIndex - 1)}
+              disabled={message.swipeIndex === 0}
+              aria-label="Previous version"
+              title="Previous version"
+              className="rounded-md p-1 transition hover:bg-elevated hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span aria-live="polite" className="min-w-8 text-center tabular-nums">
+              {message.swipeIndex + 1}/{message.swipeCount}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                message.swipeIndex < message.swipeCount - 1 ? onSwipe(message.swipeIndex + 1) : onRegenerate?.()
+              }
+              disabled={message.swipeIndex === message.swipeCount - 1 && !onRegenerate}
+              aria-label={message.swipeIndex < message.swipeCount - 1 ? "Next version" : "Generate another version"}
+              title={message.swipeIndex < message.swipeCount - 1 ? "Next version" : "Generate another version"}
+              className="rounded-md p-1 transition hover:bg-elevated hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         )}
 
         {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}

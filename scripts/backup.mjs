@@ -97,8 +97,25 @@ function git(gitArgs) {
 
 const prisma = new PrismaClient()
 
+/**
+ * Retries a query a few times. A free Neon database sleeps when idle and
+ * often drops the first connection while it wakes, which would otherwise fail
+ * a scheduled backup for no real reason.
+ */
+async function withRetry(run, attempts = 4) {
+  for (let i = 1; ; i++) {
+    try {
+      return await run()
+    } catch (error) {
+      if (i >= attempts) throw error
+      console.warn(`Database not ready (${error.message.trim().split("\n").at(-1)}); retrying in ${i * 5}s`)
+      await new Promise((r) => setTimeout(r, i * 5000))
+    }
+  }
+}
+
 try {
-  const worlds = await prisma.world.findMany({
+  const worlds = await withRetry(() => prisma.world.findMany({
     orderBy: { createdAt: "asc" },
     include: {
       members: { include: { character: true, user: { select: { id: true, name: true, email: true } } } },
@@ -111,7 +128,7 @@ try {
         include: { character: true },
       },
     },
-  })
+  }))
 
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true })
 
@@ -174,6 +191,8 @@ try {
         format: m.format,
         isImported: m.isImported,
         aiGenerated: m.aiGenerated,
+        // Other versions of a regenerated reply, kept so none is lost.
+        ...(m.swipes.length > 1 ? { swipes: m.swipes, swipeIndex: m.swipeIndex } : {}),
         timestamp: m.timestamp.toISOString(),
       })),
     }

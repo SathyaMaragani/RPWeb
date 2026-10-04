@@ -6,6 +6,7 @@ import {
   createMessage,
   editMessage,
   deleteMessage,
+  selectSwipe,
   fetchChangesSince,
   fetchOlderMessages,
 } from "@/server/actions/messages"
@@ -258,6 +259,17 @@ export default function ChatClient({
     }
   }
 
+  const swipeTo = async (id: string, index: number) => {
+    setAiError(null)
+    try {
+      const saved = await selectSwipe(id, index)
+      if (saved.updatedAt > cursorRef.current) cursorRef.current = saved.updatedAt
+      setMessages((prev) => mergeMessages(prev, [saved]))
+    } catch {
+      setAiError("Could not switch versions. Try again.")
+    }
+  }
+
   const applyEdit = async (id: string, content: string) => {
     const saved = await editMessage(id, content)
     if (saved.updatedAt > cursorRef.current) cursorRef.current = saved.updatedAt
@@ -324,6 +336,11 @@ export default function ChatClient({
                   onRegenerate={
                     msg.aiGenerated && i === messages.length - 1 && !writing
                       ? () => void runAi(msg.character.id, msg.id)
+                      : undefined
+                  }
+                  onSwipe={
+                    msg.aiGenerated && i === messages.length - 1 && !writing
+                      ? (index) => void swipeTo(msg.id, index)
                       : undefined
                   }
                 />

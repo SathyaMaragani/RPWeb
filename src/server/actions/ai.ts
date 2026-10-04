@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { requireUserId, requireWorldMembership } from "@/server/auth-guards"
-import { serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage } from "@/lib/messages"
+import { addSwipe, serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage } from "@/lib/messages"
 import { buildPrompt, cleanReply, fillVariables } from "@/lib/ai/prompt"
 import { activateLore, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
 import { normalizeLorebook } from "@/lib/cards"
@@ -76,11 +76,13 @@ export async function generateReply(
   }
 
   let history = recent.reverse()
+  let regenerating: (typeof history)[number] | null = null
   if (options.regenerateMessageId) {
     const last = history.at(-1)
     if (!last || last.id !== options.regenerateMessageId || !last.aiGenerated) {
       return { ok: false, error: "Only the latest AI reply can be regenerated." }
     }
+    regenerating = last
     history = history.slice(0, -1)
   }
 
@@ -122,10 +124,11 @@ export async function generateReply(
   }
 
   const content = cleanReply(text, character.name).slice(0, MAX_MESSAGE_LENGTH)
-  const message = options.regenerateMessageId
+  // A regenerated reply keeps its earlier versions to swipe back to.
+  const message = regenerating
     ? await prisma.message.update({
-        where: { id: options.regenerateMessageId },
-        data: { content },
+        where: { id: regenerating.id },
+        data: addSwipe(regenerating, content),
         include: { character: true },
       })
     : await prisma.message.create({

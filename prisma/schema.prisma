@@ -207,6 +207,10 @@ model Message {
   isImported  Boolean   @default(false)
   /// Written by a model rather than typed by a person.
   aiGenerated Boolean   @default(false)
+  /// Every version of an AI reply, when it has been regenerated. `content`
+  /// always mirrors swipes[swipeIndex], so nothing else needs to know.
+  swipes      String[]  @default([])
+  swipeIndex  Int       @default(0)
   editedAt    DateTime?
   // Soft delete. Clients learn about new messages by polling for rows changed
   // since a cursor; a hard delete leaves nothing to poll, so the other person

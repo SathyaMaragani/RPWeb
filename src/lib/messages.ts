@@ -42,6 +42,10 @@ export type SerializedMessage = {
   isImported: boolean
   /** Written by a model rather than typed by a person. */
   aiGenerated: boolean
+  /** How many versions of this reply exist (1 unless regenerated). */
+  swipeCount: number
+  /** Which version is showing, from 0. */
+  swipeIndex: number
   editedAt: string | null
   /** Advances on every change, and drives the polling cursor. */
   updatedAt: string
@@ -62,6 +66,8 @@ export function serializeMessage(message: Message & { character: Character }): S
     timestamp: message.timestamp.toISOString(),
     isImported: message.isImported,
     aiGenerated: message.aiGenerated,
+    swipeCount: Math.max(1, message.swipes.length),
+    swipeIndex: message.swipes.length ? message.swipeIndex : 0,
     editedAt: message.editedAt?.toISOString() ?? null,
     updatedAt: message.updatedAt.toISOString(),
     character: {
@@ -73,4 +79,22 @@ export function serializeMessage(message: Message & { character: Character }): S
       color: message.character.color,
     },
   }
+}
+
+/** The most versions of one reply that are kept; the oldest go first. */
+export const MAX_SWIPES = 20
+
+/** Adds a freshly generated version of a reply and shows it, keeping the old ones. */
+export function addSwipe(message: { content: string; swipes: string[] }, next: string) {
+  const versions = message.swipes.length ? message.swipes : [message.content]
+  const swipes = [...versions, next].slice(-MAX_SWIPES)
+  return { content: next, swipes, swipeIndex: swipes.length - 1 }
+}
+
+/** An edit changes the version being shown, so swiping away and back keeps it. */
+export function editSwipe(message: { swipes: string[]; swipeIndex: number }, content: string) {
+  if (!message.swipes.length) return { content }
+  const swipes = [...message.swipes]
+  swipes[message.swipeIndex] = content
+  return { content, swipes }
 }

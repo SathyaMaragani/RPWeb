@@ -1,9 +1,10 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { requireUserId } from "@/server/auth-guards"
+import { requireUserId, requireWorldMembership } from "@/server/auth-guards"
 import {
   serializeMessage,
+  editSwipe,
   isStoredFormat,
   MESSAGE_PAGE_SIZE,
   MAX_MESSAGE_LENGTH,
@@ -96,7 +97,7 @@ export async function editMessage(messageId: string, content: string): Promise<S
 
   const message = await prisma.message.update({
     where: { id: messageId },
-    data: { content: trimmed, editedAt: new Date() },
+    data: { ...editSwipe(existing, trimmed), editedAt: new Date() },
     include: { character: true },
   })
   return serializeMessage(message)
@@ -183,4 +184,30 @@ export async function fetchOlderMessages(
   const page = hasMore ? messages.slice(0, MESSAGE_PAGE_SIZE) : messages
 
   return { messages: page.reverse().map(serializeMessage), hasMore }
+}
+
+/**
+ * Shows another version of the latest AI reply. Any member may swipe, as any
+ * member may regenerate: it is the shared story's next line being chosen.
+ */
+export async function selectSwipe(messageId: string, index: number): Promise<SerializedMessage> {
+  const userId = await requireUserId()
+  const message = await prisma.message.findUnique({ where: { id: messageId } })
+  if (!message || message.deletedAt || !message.aiGenerated) throw new Error("Message not found")
+  await requireWorldMembership(userId, message.worldId)
+
+  const latest = await prisma.message.findFirst({
+    where: { worldId: message.worldId, deletedAt: null },
+    orderBy: { timestamp: "desc" },
+    select: { id: true },
+  })
+  if (latest?.id !== messageId) throw new Error("Only the latest reply can be swiped")
+  if (!Number.isInteger(index) || index < 0 || index >= message.swipes.length) throw new Error("No such version")
+
+  const updated = await prisma.message.update({
+    where: { id: messageId },
+    data: { content: message.swipes[index], swipeIndex: index },
+    include: { character: true },
+  })
+  return serializeMessage(updated)
 }
