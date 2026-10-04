@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plus, Users } from "lucide-react"
+import { FileUp, Plus, Users } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { requireUserId } from "@/server/auth-guards"
 import { characterColor, avatarSrc, portraitSrc } from "@/lib/characters"
@@ -30,12 +30,20 @@ export default async function CharactersPage() {
         subtitle="Shared with everyone in the worlds they belong to."
         quote="Characters are the soul of every story."
         action={
-          <Link
-            href="/characters/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_24px_-6px_rgba(124,92,255,0.7)] transition hover:bg-accent-soft"
-          >
-            <Plus size={18} /> Create Character
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/characters/import"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/50"
+            >
+              <FileUp size={17} /> Import card
+            </Link>
+            <Link
+              href="/characters/new"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_24px_-6px_rgba(124,92,255,0.7)] transition hover:bg-accent-soft"
+            >
+              <Plus size={18} /> Create Character
+            </Link>
+          </div>
         }
       />
 

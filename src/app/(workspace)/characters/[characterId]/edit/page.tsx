@@ -1,10 +1,12 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { ArrowRight, Wand2 } from "lucide-react"
+import { ArrowRight, BookOpen, Wand2 } from "lucide-react"
+import CardExport from "@/components/characters/CardExport"
+import { normalizeLorebook } from "@/lib/cards"
 import { prisma } from "@/lib/prisma"
 import { editCharacter } from "@/server/actions/characters"
 import { requireUserId } from "@/server/auth-guards"
-import { avatarSrc } from "@/lib/characters"
+import { avatarSrc, characterColor } from "@/lib/characters"
 import CharacterForm from "@/components/characters/CharacterForm"
 
 export default async function EditCharacterPage(
@@ -29,6 +31,7 @@ export default async function EditCharacterPage(
   if (character.userId !== userId && !shared) redirect("/characters")
 
   const updateAction = editCharacter.bind(null, characterId)
+  const loreCount = normalizeLorebook(character.lorebook).length
   const worldNames = character.worlds.map((w) => w.world.name)
 
   return (
@@ -55,6 +58,16 @@ export default async function EditCharacterPage(
           </span>
           <ArrowRight size={16} />
         </Link>
+
+        <div className="mt-4 space-y-2">
+          <CardExport characterId={characterId} name={character.name} color={characterColor(character)} />
+          {loreCount > 0 && (
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <BookOpen size={13} /> Carries {loreCount} lorebook {loreCount === 1 ? "entry" : "entries"} from its card,
+              used whenever an AI plays them. Export and re-import the card to change them.
+            </p>
+          )}
+        </div>
 
         <div className="mt-8">
           <CharacterForm

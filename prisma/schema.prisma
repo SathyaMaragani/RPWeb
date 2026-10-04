@@ -97,6 +97,10 @@ model Character {
   tags            String[]  @default([])
   /// PRIVATE, UNLISTED or PUBLIC. Only affects discovery, not world access.
   visibility      String    @default("PRIVATE")
+  /// Lore that travels with the character, usually from an imported card.
+  /// Used whenever the character is AI-played, in any world. A list of
+  /// entries shaped like LoreEntry (name, keywords, content, flags).
+  lorebook        Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

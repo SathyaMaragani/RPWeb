@@ -150,6 +150,7 @@ try {
           exampleDialogue: entry.character.exampleDialogue,
           tags: entry.character.tags,
           visibility: entry.character.visibility,
+          lorebook: entry.character.lorebook,
           aiEnabled: entry.aiEnabled,
           role: playedBy?.role ?? null,
           playedBy: playedBy?.user.name ?? null,

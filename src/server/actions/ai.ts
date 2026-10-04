@@ -6,6 +6,7 @@ import { requireUserId, requireWorldMembership } from "@/server/auth-guards"
 import { serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage } from "@/lib/messages"
 import { buildPrompt, cleanReply, fillVariables } from "@/lib/ai/prompt"
 import { activateLore, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
+import { normalizeLorebook } from "@/lib/cards"
 import { isProviderId } from "@/lib/ai/providers"
 import { decryptSecret } from "@/server/ai/crypto"
 import { generateText, GenerationError } from "@/server/ai/generate"
@@ -87,8 +88,9 @@ export async function generateReply(
   const userName = persona?.name ?? member.character.name
   // Keywords are looked for in the latest few messages, so lore comes and goes
   // with what the scene is actually about.
+  // The world's lorebook plus any lore the character carries from its card.
   const lore = activateLore(
-    world.lore,
+    [...world.lore, ...normalizeLorebook(castEntry.character.lorebook)],
     history.slice(-LORE_SCAN_DEPTH).map((m) => m.content)
   )
 

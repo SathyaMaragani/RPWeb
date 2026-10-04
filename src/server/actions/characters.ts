@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireUserId, requireEditableCharacter } from "@/server/auth-guards"
-import { normalizeColor, parseDataUrl, parseTags, CHARACTER_VISIBILITIES } from "@/lib/characters"
+import { normalizeColor, parseDataUrl, parseTags, avatarSrc, CHARACTER_VISIBILITIES } from "@/lib/characters"
 import { normalizeAppearance } from "@/lib/appearance"
+import { CARD_FIELD_MAX, normalizeLorebook, parseCard, toCardV2 } from "@/lib/cards"
 
 function readCharacterForm(formData: FormData) {
   const name = (formData.get("name") as string | null)?.trim()
@@ -32,10 +33,10 @@ function readCard(formData: FormData) {
   const visibility = String(formData.get("visibility") ?? "PRIVATE")
   if (!CHARACTER_VISIBILITIES.includes(visibility as never)) throw new Error("Unknown visibility")
   return {
-    personality: text(formData, "personality", 8000),
-    scenario: text(formData, "scenario", 8000),
-    greeting: text(formData, "greeting", 8000),
-    exampleDialogue: text(formData, "exampleDialogue", 12000),
+    personality: text(formData, "personality", CARD_FIELD_MAX),
+    scenario: text(formData, "scenario", CARD_FIELD_MAX),
+    greeting: text(formData, "greeting", CARD_FIELD_MAX),
+    exampleDialogue: text(formData, "exampleDialogue", CARD_FIELD_MAX),
     tags: parseTags(String(formData.get("tags") ?? "")),
     visibility,
   }
@@ -132,4 +133,44 @@ export async function editCharacter(characterId: string, formData: FormData) {
   // A character's look is shared, so every world showing it is now stale.
   revalidatePath("/worlds", "layout")
   redirect("/characters")
+}
+
+/**
+ * Creates a character from a Tavern card (V1/V2/V3 JSON, already pulled out of
+ * a PNG by the browser). The card is parsed again here: the browser's preview
+ * is a convenience, not something to trust. `avatarImage` is the card picture,
+ * cropped and resized in the browser like any other upload.
+ */
+export async function importCharacterCard(card: unknown, avatarImage: string | null) {
+  const userId = await requireUserId()
+  const parsed = parseCard(card)
+
+  const character = await prisma.character.create({
+    data: {
+      userId,
+      name: parsed.name,
+      bio: parsed.bio,
+      personality: parsed.personality,
+      scenario: parsed.scenario,
+      greeting: parsed.greeting,
+      exampleDialogue: parsed.exampleDialogue,
+      tags: parsed.tags,
+      lorebook: parsed.lorebook.length ? parsed.lorebook : undefined,
+    },
+  })
+  if (avatarImage) await applyAvatarImage(character.id, avatarImage)
+
+  revalidatePath("/characters")
+  return { id: character.id }
+}
+
+/** A character as a V2 card, plus where its picture loads from, for download. */
+export async function exportCharacterCard(characterId: string) {
+  const userId = await requireUserId()
+  await requireEditableCharacter(userId, characterId)
+  const c = await prisma.character.findUniqueOrThrow({ where: { id: characterId } })
+  return {
+    card: toCardV2({ ...c, lorebook: normalizeLorebook(c.lorebook) }),
+    imageSrc: avatarSrc(c),
+  }
 }
