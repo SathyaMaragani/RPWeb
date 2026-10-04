@@ -5,6 +5,10 @@ import { serializeMessage, MESSAGE_PAGE_SIZE } from "@/lib/messages"
 import { avatarSrc, bannerSrc } from "@/lib/characters"
 import WorldView from "./WorldView"
 
+// AI replies run as server actions on this page; a thinking model can take a
+// while. Vercel caps this at the plan's maximum.
+export const maxDuration = 300
+
 export default async function WorldPage(props: PageProps<"/worlds/[worldId]">) {
   const userId = await requireUserId()
   const { worldId } = await props.params
@@ -67,11 +71,19 @@ export default async function WorldPage(props: PageProps<"/worlds/[worldId]">) {
   // Characters this person created that are not in this world yet, so they can
   // be brought in. Everything already in the cast is usable by every member.
   const inCast = new Set(cast.map((c) => c.id))
-  const myCharacters = await prisma.character.findMany({
-    where: { userId, id: { notIn: [...inCast] } },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, color: true },
-  })
+  const [myCharacters, personas, modelCount] = await Promise.all([
+    prisma.character.findMany({
+      where: { userId, id: { notIn: [...inCast] } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, color: true },
+    }),
+    prisma.persona.findMany({
+      where: { userId },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, isDefault: true },
+    }),
+    prisma.modelPreset.count({ where: { userId } }),
+  ])
 
   return (
     <WorldView
@@ -119,6 +131,17 @@ export default async function WorldPage(props: PageProps<"/worlds/[worldId]">) {
       }))}
       defaultCharacterId={member.characterId}
       importDate={world.imports[0]?.createdAt.toISOString() ?? null}
+      ai={{
+        cast: world.cast.map((entry) => ({
+          id: entry.character.id,
+          name: entry.character.name,
+          aiEnabled: entry.aiEnabled,
+          hasGreeting: Boolean(entry.character.greeting),
+        })),
+        personas,
+        hasModel: modelCount > 0,
+        settings: { memory: world.memory, systemPrompt: world.systemPrompt },
+      }}
     />
   )
 }

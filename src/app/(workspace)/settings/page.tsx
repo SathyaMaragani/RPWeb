@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireUserId } from "@/server/auth-guards"
 import { signOutAction } from "@/server/actions/session"
 import { PageHeader } from "@/components/layout/PageHeader"
+import ModelPresets from "./ModelPresets"
 import { Download, LogOut, ShieldAlert, User as UserIcon } from "lucide-react"
 
 export default async function SettingsPage() {
@@ -11,6 +12,23 @@ export default async function SettingsPage() {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, email: true, createdAt: true },
+  })
+
+  const presets = await prisma.modelPreset.findMany({
+    where: { userId },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    // Never the encrypted key: this goes to the page.
+    select: {
+      id: true,
+      name: true,
+      provider: true,
+      baseUrl: true,
+      model: true,
+      keyHint: true,
+      temperature: true,
+      maxTokens: true,
+      isDefault: true,
+    },
   })
 
   const worlds = await prisma.world.findMany({
@@ -105,6 +123,8 @@ export default async function SettingsPage() {
           </ul>
         )}
       </section>
+
+      <ModelPresets presets={presets} />
 
       <section className="rounded-2xl border border-line bg-surface p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Session</h2>

@@ -20,6 +20,32 @@ model User {
   worldsOwned      World[]       @relation("WorldOwner")
   authoredMessages Message[]     @relation("MessageAuthor")
   personas         Persona[]
+  modelPresets     ModelPreset[]
+}
+
+/// A saved way to reach a model with the user's own API key ("bring your own
+/// key"). The key is encrypted at rest and never sent back to the browser.
+model ModelPreset {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  /// Key into PROVIDERS in src/lib/ai/providers.ts.
+  provider    String
+  /// Only for the "custom" provider; the others have fixed endpoints.
+  baseUrl     String?
+  model       String
+  apiKeyEnc   String
+  /// Last four characters of the key, so the user can tell keys apart.
+  keyHint     String
+  temperature Float    @default(0.9)
+  maxTokens   Int      @default(800)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// Who the user is inside a roleplay. An AI character is told about the active
@@ -103,6 +129,10 @@ model World {
   bannerUpdatedAt DateTime?
   inviteCode      String    @unique
   ownerId         String
+  /// Notes every AI reply in this world is given: facts to keep consistent.
+  memory          String?
+  /// Replaces the default instructions AI characters are given here.
+  systemPrompt    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -133,6 +163,8 @@ model WorldCharacter {
   id          String   @id @default(cuid())
   worldId     String
   characterId String
+  /// Whether an AI writes this character's replies in this world.
+  aiEnabled   Boolean  @default(false)
   addedAt     DateTime @default(now())
 
   world     World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -168,6 +200,8 @@ model Message {
   format      String    @default("NARRATION") // ACTION, DIALOGUE, THOUGHT, NARRATION
   timestamp   DateTime  @default(now())
   isImported  Boolean   @default(false)
+  /// Written by a model rather than typed by a person.
+  aiGenerated Boolean   @default(false)
   editedAt    DateTime?
   // Soft delete. Clients learn about new messages by polling for rows changed
   // since a cursor; a hard delete leaves nothing to poll, so the other person

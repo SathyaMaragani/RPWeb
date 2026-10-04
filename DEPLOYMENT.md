@@ -60,6 +60,10 @@ npm run db:push:prod
    | `DATABASE_URL` | the **pooled** Neon URL, plus `&pgbouncer=true&connect_timeout=15` |
    | `AUTH_SECRET` | a fresh random secret |
 
+   `AUTH_SECRET` also encrypts the API keys people save for AI characters
+   (Settings, AI models). Changing it makes those keys unreadable, and
+   everyone has to paste their key again.
+
    Generate the secret with:
 
    ```bash

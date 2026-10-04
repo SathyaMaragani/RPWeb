@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import ChatClient from "./ChatClient"
+import ChatClient, { type ChatAi } from "./ChatClient"
 import WorldHeader, { type WorldHeaderWorld } from "./WorldHeader"
 import WorldInfoPanel, {
   type AddableCharacter,
@@ -31,6 +31,7 @@ export default function WorldView({
   postAsCharacters,
   defaultCharacterId,
   importDate,
+  ai,
 }: {
   world: WorldHeaderWorld
   panelWorld: PanelWorld
@@ -45,6 +46,7 @@ export default function WorldView({
   postAsCharacters: ComposerCharacter[]
   defaultCharacterId: string
   importDate: string | null
+  ai: ChatAi
 }) {
   const [messageCount, setMessageCount] = useState(totalMessageCount)
   // Stable identity, so the chat's reporting effect does not re-run every render.
@@ -65,6 +67,7 @@ export default function WorldView({
             ownerCharacterIds={ownerCharacterIds}
             postAsCharacters={postAsCharacters}
             defaultCharacterId={defaultCharacterId}
+            ai={ai}
             onCountChange={handleCount}
           />
         </div>

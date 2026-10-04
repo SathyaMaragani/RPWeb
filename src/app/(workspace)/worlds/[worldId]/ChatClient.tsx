@@ -12,6 +12,15 @@ import {
 import type { SerializedMessage } from "@/lib/messages"
 import MessageItem from "./MessageItem"
 import Composer, { type ComposerCharacter } from "./Composer"
+import AiBar, { type AiCastMember, type AiPersona, type AiWorldSettings } from "./AiBar"
+import { generateReply } from "@/server/actions/ai"
+
+export type ChatAi = {
+  cast: AiCastMember[]
+  personas: AiPersona[]
+  hasModel: boolean
+  settings: AiWorldSettings
+}
 
 /**
  * How often to ask the server what changed.
@@ -56,6 +65,7 @@ export default function ChatClient({
   ownerCharacterIds,
   postAsCharacters,
   defaultCharacterId,
+  ai,
   onCountChange,
 }: {
   initialMessages: SerializedMessage[]
@@ -67,6 +77,7 @@ export default function ChatClient({
   ownerCharacterIds: string[]
   postAsCharacters: ComposerCharacter[]
   defaultCharacterId: string
+  ai: ChatAi
   /** Reports the live world total so the header and info panel can show it. */
   onCountChange?: (count: number) => void
 }) {
@@ -75,6 +86,9 @@ export default function ChatClient({
   const [hasOlder, setHasOlder] = useState(initialHasOlder)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [syncFailing, setSyncFailing] = useState(false)
+  const [writing, setWriting] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [personaId, setPersonaId] = useState(ai.personas.find((p) => p.isDefault)?.id ?? "")
 
   // Messages older than the loaded window, so the world total can be derived
   // rather than incremented — which stays correct however a message arrives.
@@ -214,6 +228,36 @@ export default function ChatClient({
     setMessages((prev) => mergeMessages(prev, [saved]))
   }
 
+  /** Keeps polling quick after a change, so the other person's reply arrives soon. */
+  const markActive = useCallback(() => {
+    lastChangeRef.current = Date.now()
+  }, [])
+
+  /** Has the AI write a character's next message, or rewrite the latest one. */
+  const runAi = async (characterId: string, regenerateMessageId?: string) => {
+    if (writing) return
+    setWriting(characterId)
+    setAiError(null)
+    stickToBottomRef.current = true
+    try {
+      const res = await generateReply(worldId, characterId, {
+        personaId,
+        regenerateMessageId: regenerateMessageId ?? null,
+      })
+      if (!res.ok) {
+        setAiError(res.error)
+        return
+      }
+      markActive()
+      if (res.message.updatedAt > cursorRef.current) cursorRef.current = res.message.updatedAt
+      setMessages((prev) => mergeMessages(prev, [res.message]))
+    } catch {
+      setAiError("Could not reach the server. Try again.")
+    } finally {
+      setWriting(null)
+    }
+  }
+
   const applyEdit = async (id: string, content: string) => {
     const saved = await editMessage(id, content)
     if (saved.updatedAt > cursorRef.current) cursorRef.current = saved.updatedAt
@@ -277,6 +321,11 @@ export default function ChatClient({
                   canManage={mine.has(msg.character.id)}
                   onEdit={applyEdit}
                   onDelete={applyDelete}
+                  onRegenerate={
+                    msg.aiGenerated && i === messages.length - 1 && !writing
+                      ? () => void runAi(msg.character.id, msg.id)
+                      : undefined
+                  }
                 />
               </div>
             )
@@ -290,6 +339,19 @@ export default function ChatClient({
           <CloudOff size={13} /> Not syncing — retrying
         </div>
       )}
+
+      <AiBar
+        worldId={worldId}
+        cast={ai.cast}
+        personas={ai.personas}
+        hasModel={ai.hasModel}
+        settings={ai.settings}
+        writing={writing}
+        error={aiError}
+        onAsk={(id) => void runAi(id)}
+        personaId={personaId}
+        onPersonaChange={setPersonaId}
+      />
 
       <Composer
         characters={postAsCharacters}

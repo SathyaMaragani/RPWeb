@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2 } from "lucide-react"
+import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2, RotateCcw } from "lucide-react"
 import { Avatar } from "@/components/layout/Sidebar"
 import type { SerializedMessage } from "@/lib/messages"
 import { characterColor } from "@/lib/characters"
@@ -25,6 +25,7 @@ export default function MessageItem({
   canManage,
   onEdit,
   onDelete,
+  onRegenerate,
 }: {
   message: SerializedMessage
   showHeader: boolean
@@ -32,6 +33,8 @@ export default function MessageItem({
   canManage: boolean
   onEdit: (id: string, content: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  /** Only on the latest message, when a model wrote it. */
+  onRegenerate?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -91,6 +94,16 @@ export default function MessageItem({
             are pinned to the corner and only appear on hover. */}
         {canManage && !editing && (
           <div className="msg-actions absolute right-3 top-2 flex items-center gap-1">
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                title="Regenerate"
+                aria-label="Regenerate this reply"
+                className="rounded-lg border border-line bg-surface p-1.5 text-muted transition hover:text-ink"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
             <button
               onClick={() => {
                 setEditing(true)
@@ -159,6 +172,14 @@ export default function MessageItem({
                 minute: "2-digit",
               })}
             </span>
+            {message.aiGenerated && (
+              <span
+                title="Written by an AI"
+                className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-soft"
+              >
+                AI
+              </span>
+            )}
             {message.editedAt && <span className="text-[11px] text-muted">(edited)</span>}
             {/* No summary tags here: every line in the body is already labelled
                 with what it is, and repeating it by the name is just noise. */}

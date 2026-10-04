@@ -40,6 +40,8 @@ export type SerializedMessage = {
   format: string
   timestamp: string
   isImported: boolean
+  /** Written by a model rather than typed by a person. */
+  aiGenerated: boolean
   editedAt: string | null
   /** Advances on every change, and drives the polling cursor. */
   updatedAt: string
@@ -59,6 +61,7 @@ export function serializeMessage(message: Message & { character: Character }): S
     format: message.format,
     timestamp: message.timestamp.toISOString(),
     isImported: message.isImported,
+    aiGenerated: message.aiGenerated,
     editedAt: message.editedAt?.toISOString() ?? null,
     updatedAt: message.updatedAt.toISOString(),
     character: {
