@@ -15,6 +15,8 @@ import MessageItem from "./MessageItem"
 import Composer, { type ComposerCharacter } from "./Composer"
 import AiBar, { type AiCastMember, type AiPersona, type AiWorldSettings } from "./AiBar"
 import { generateReply } from "@/server/actions/ai"
+import { branchWorld } from "@/server/actions/worlds"
+import { useRouter } from "next/navigation"
 
 export type ChatAi = {
   cast: AiCastMember[]
@@ -87,6 +89,7 @@ export default function ChatClient({
   const [hasOlder, setHasOlder] = useState(initialHasOlder)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [syncFailing, setSyncFailing] = useState(false)
+  const router = useRouter()
   const [writing, setWriting] = useState<string | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [personaId, setPersonaId] = useState(ai.personas.find((p) => p.isDefault)?.id ?? "")
@@ -270,6 +273,18 @@ export default function ChatClient({
     }
   }
 
+  /** Copies the story up to a message into a new world, leaving this one alone. */
+  const branchFrom = async (id: string) => {
+    if (!window.confirm("Start a new world with the story up to this message? This world stays exactly as it is.")) return
+    setAiError(null)
+    try {
+      const { worldId: branchId } = await branchWorld(id)
+      router.push(`/worlds/${branchId}`)
+    } catch {
+      setAiError("Could not create the branch. Try again.")
+    }
+  }
+
   const applyEdit = async (id: string, content: string) => {
     const saved = await editMessage(id, content)
     if (saved.updatedAt > cursorRef.current) cursorRef.current = saved.updatedAt
@@ -333,6 +348,7 @@ export default function ChatClient({
                   canManage={mine.has(msg.character.id)}
                   onEdit={applyEdit}
                   onDelete={applyDelete}
+                  onBranch={(id) => void branchFrom(id)}
                   onRegenerate={
                     msg.aiGenerated && i === messages.length - 1 && !writing
                       ? () => void runAi(msg.character.id, msg.id)

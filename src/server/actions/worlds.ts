@@ -180,3 +180,88 @@ export async function addCharacterToWorld(worldId: string, characterId: string) 
   revalidatePath(`/worlds/${worldId}`)
   revalidatePath("/characters")
 }
+
+/**
+ * Starts a new world holding the story up to (and including) one message:
+ * the same cast and AI settings, lore, memory and banner, with the person
+ * branching as its owner. The original world is not changed at all, which is
+ * why this is the way to take a shared story somewhere else from an earlier
+ * point: nothing anyone wrote after it is touched.
+ */
+export async function branchWorld(messageId: string) {
+  const userId = await requireUserId()
+  const point = await prisma.message.findUnique({ where: { id: messageId }, select: { worldId: true, timestamp: true, deletedAt: true } })
+  if (!point || point.deletedAt) throw new Error("Message not found")
+  const member = await requireWorldMembership(userId, point.worldId)
+
+  const source = await prisma.world.findUniqueOrThrow({
+    where: { id: point.worldId },
+    include: { cast: true, lore: true, banner: true },
+  })
+  const inviteCode = await generateInviteCode()
+
+  const branch = await prisma.$transaction(
+    async (tx) => {
+      const world = await tx.world.create({
+        data: {
+          name: `${source.name} (branch)`.slice(0, 120),
+          description: source.description,
+          bannerUrl: source.bannerUrl,
+          bannerUpdatedAt: source.banner ? new Date() : null,
+          memory: source.memory,
+          systemPrompt: source.systemPrompt,
+          // The summary only still fits if it ends at or before the branch point.
+          ...(source.summaryUntil && source.summaryUntil <= point.timestamp
+            ? { summary: source.summary, summaryUntil: source.summaryUntil }
+            : {}),
+          inviteCode,
+          ownerId: userId,
+          members: { create: { userId, characterId: member.characterId, role: "OWNER" } },
+          cast: {
+            create: source.cast.map((c) => ({ characterId: c.characterId, aiEnabled: c.aiEnabled })),
+          },
+          lore: {
+            create: source.lore.map((e) => ({
+              name: e.name,
+              keywords: e.keywords,
+              content: e.content,
+              constant: e.constant,
+              enabled: e.enabled,
+              caseSensitive: e.caseSensitive,
+              wholeWord: e.wholeWord,
+              priority: e.priority,
+            })),
+          },
+          ...(source.banner ? { banner: { create: { data: source.banner.data, mime: source.banner.mime } } } : {}),
+        },
+      })
+
+      const messages = await tx.message.findMany({
+        where: { worldId: source.id, deletedAt: null, timestamp: { lte: point.timestamp } },
+        orderBy: { timestamp: "asc" },
+      })
+      await tx.message.createMany({
+        data: messages.map((m) => ({
+          worldId: world.id,
+          characterId: m.characterId,
+          authorId: m.authorId,
+          content: m.content,
+          format: m.format,
+          timestamp: m.timestamp,
+          isImported: m.isImported,
+          aiGenerated: m.aiGenerated,
+          swipes: m.swipes,
+          swipeIndex: m.swipeIndex,
+          editedAt: m.editedAt,
+        })),
+      })
+      return world
+    },
+    // Copying a long story can take a while on a sleepy free database.
+    { timeout: 30_000 }
+  )
+
+  revalidatePath("/worlds")
+  revalidatePath("/dashboard")
+  return { worldId: branch.id }
+}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
+import { Crown, MoreHorizontal, Pencil, Trash2, X, Check, Loader2, RotateCcw, ChevronLeft, ChevronRight, GitBranch } from "lucide-react"
 import { Avatar } from "@/components/layout/Sidebar"
 import type { SerializedMessage } from "@/lib/messages"
 import { characterColor } from "@/lib/characters"
@@ -27,6 +27,7 @@ export default function MessageItem({
   onDelete,
   onRegenerate,
   onSwipe,
+  onBranch,
 }: {
   message: SerializedMessage
   showHeader: boolean
@@ -38,6 +39,8 @@ export default function MessageItem({
   onRegenerate?: () => void
   /** Only on the latest AI reply: show another of its versions. */
   onSwipe?: (index: number) => void
+  /** Start a new world with the story up to this message. */
+  onBranch: (id: string) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -137,8 +140,18 @@ export default function MessageItem({
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-line bg-elevated shadow-xl"
+                    className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border border-line bg-elevated shadow-xl"
                   >
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onBranch(message.id)
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-ink transition hover:bg-surface"
+                    >
+                      <GitBranch size={13} /> Branch from here
+                    </button>
                     <button
                       role="menuitem"
                       onClick={() => void remove()}
