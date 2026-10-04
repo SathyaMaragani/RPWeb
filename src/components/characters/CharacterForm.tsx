@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, User as UserIcon } from "lucide-react"
-import { CHARACTER_COLORS, fallbackColor, AVATAR_SIZE } from "@/lib/characters"
+import { CHARACTER_COLORS, fallbackColor, AVATAR_SIZE, estimateTokens } from "@/lib/characters"
 import ImagePicker from "@/components/media/ImagePicker"
 
 export type CharacterDefaults = {
@@ -15,6 +15,28 @@ export type CharacterDefaults = {
   avatarSrc: string | null
   color: string
   bio: string
+  personality: string
+  scenario: string
+  greeting: string
+  exampleDialogue: string
+  tags: string
+  visibility: string
+}
+
+/** Defaults for a brand-new character. */
+export const EMPTY_CHARACTER: CharacterDefaults = {
+  name: "",
+  title: "",
+  avatarUrl: "",
+  avatarSrc: null,
+  color: "",
+  bio: "",
+  personality: "",
+  scenario: "",
+  greeting: "",
+  exampleDialogue: "",
+  tags: "",
+  visibility: "PRIVATE",
 }
 
 /**
@@ -37,6 +59,18 @@ export default function CharacterForm({
   const [avatarUrl, setAvatarUrl] = useState(defaults.avatarUrl)
   const [color, setColor] = useState(defaults.color)
   const [pending, setPending] = useState(false)
+  const [card, setCard] = useState({
+    personality: defaults.personality,
+    scenario: defaults.scenario,
+    greeting: defaults.greeting,
+    exampleDialogue: defaults.exampleDialogue,
+  })
+  const cardTokens = estimateTokens(Object.values(card).filter(Boolean).join("\n"))
+  const cardField = (key: keyof typeof card) => ({
+    name: key,
+    value: card[key],
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCard({ ...card, [key]: e.target.value }),
+  })
 
   // A freshly cropped image, as a data URL. Empty string means "remove the
   // current one"; null means "leave whatever is stored alone".
@@ -180,6 +214,59 @@ export default function CharacterForm({
       <Field label="Bio">
         <textarea name="bio" rows={4} defaultValue={defaults.bio} className={inputClass} />
       </Field>
+
+      {/* Open by default once any of it is filled in, so it is not hidden work. */}
+      <details
+        open={Object.values(card).some(Boolean) || undefined}
+        className="group rounded-2xl border border-line bg-canvas/40 p-4 open:space-y-5"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span>
+            <span className="text-sm font-semibold text-ink">Character card</span>
+            <span className="mt-0.5 block text-xs text-muted">
+              How an AI should play them. Optional; only used when they are AI-played.
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] text-muted">
+            ~{cardTokens.toLocaleString()} tokens
+          </span>
+        </summary>
+
+        <Field label="Personality" hint="Traits, manner, how they speak and what they want.">
+          <textarea rows={4} {...cardField("personality")} className={inputClass} />
+        </Field>
+        <Field label="Scenario" hint="The situation the story opens in. {{char}} and {{user}} work here.">
+          <textarea rows={3} {...cardField("scenario")} className={inputClass} />
+        </Field>
+        <Field label="First message" hint="What they say to open a new chat, in RP formatting.">
+          <textarea
+            rows={4}
+            {...cardField("greeting")}
+            placeholder={'*Rain poured over the ruined city.* "You’re finally awake..."'}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Example dialogue" hint="Sample exchanges. Start each with <START>.">
+          <textarea
+            rows={5}
+            {...cardField("exampleDialogue")}
+            placeholder={"<START>\n{{user}}: Who are you?\n{{char}}: *She smiles faintly.* \"Someone you should stay away from.\""}
+            className={`${inputClass} font-mono`}
+          />
+        </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Tags" hint="Comma separated, e.g. Fantasy, Vampire, Slow-burn">
+            <input name="tags" type="text" defaultValue={defaults.tags} className={inputClass} />
+          </Field>
+          <Field label="Visibility" hint="Who can find them once discovery exists." required>
+            <select name="visibility" defaultValue={defaults.visibility} className={inputClass}>
+              <option value="PRIVATE">Private</option>
+              <option value="UNLISTED">Unlisted</option>
+              <option value="PUBLIC">Public</option>
+            </select>
+          </Field>
+        </div>
+      </details>
 
       <button
         type="submit"

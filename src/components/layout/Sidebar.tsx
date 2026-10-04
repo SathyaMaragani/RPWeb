@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Users, Globe, Upload, Settings, LogOut } from "lucide-react"
+import { Home, Users, Globe, Upload, Settings, LogOut, VenetianMask } from "lucide-react"
 import { signOutAction } from "@/server/actions/session"
 import { isFullScreenPath } from "@/lib/routes"
 import { Wordmark } from "@/components/brand/Logo"
@@ -10,6 +10,7 @@ import { Wordmark } from "@/components/brand/Logo"
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/characters", label: "Characters", icon: Users },
+  { href: "/personas", label: "Personas", icon: VenetianMask },
   { href: "/worlds", label: "Worlds", icon: Globe },
   { href: "/import", label: "Import", icon: Upload },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -99,7 +100,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex flex-col items-center gap-1 p-2 ${active ? "text-accent" : "text-muted"}`}
+              className={`flex flex-col items-center gap-1 px-1 py-2 ${active ? "text-accent" : "text-muted"}`}
             >
               <item.icon size={22} />
               <span className="text-[10px] font-medium">{item.label}</span>

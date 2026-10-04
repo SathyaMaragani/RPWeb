@@ -123,3 +123,21 @@ export function bannerSrc(world: {
   }
   return world.bannerUrl ?? null
 }
+
+export const CHARACTER_VISIBILITIES = ["PRIVATE", "UNLISTED", "PUBLIC"] as const
+
+/** "Fantasy, slow-burn,fantasy" -> ["Fantasy", "slow-burn"]: trimmed, deduped, capped. */
+export function parseTags(raw: string): string[] {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const part of raw.split(",")) {
+    const tag = part.trim().replace(/\s+/g, " ").slice(0, 32)
+    if (!tag || seen.has(tag.toLowerCase())) continue
+    seen.add(tag.toLowerCase())
+    tags.push(tag)
+  }
+  return tags.slice(0, 20)
+}
+
+/** A rough token count (about four characters per token), for budgeting hints only. */
+export const estimateTokens = (text: string) => Math.ceil(text.length / 4)

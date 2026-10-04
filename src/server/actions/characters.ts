@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireUserId, requireEditableCharacter } from "@/server/auth-guards"
-import { normalizeColor, parseDataUrl } from "@/lib/characters"
+import { normalizeColor, parseDataUrl, parseTags, CHARACTER_VISIBILITIES } from "@/lib/characters"
 import { normalizeAppearance } from "@/lib/appearance"
 
 function readCharacterForm(formData: FormData) {
@@ -18,7 +18,27 @@ function readCharacterForm(formData: FormData) {
   if (avatarUrl && !/^https?:\/\//i.test(avatarUrl)) {
     throw new Error("Avatar must be a http(s) image URL")
   }
-  return { name, avatarUrl, bio, title, color }
+  return { name, avatarUrl, bio, title, color, ...readCard(formData) }
+}
+
+const text = (formData: FormData, key: string, max: number) => {
+  const value = (formData.get(key) as string | null)?.trim() || null
+  if (value && value.length > max) throw new Error(`${key} is too long (max ${max.toLocaleString()} characters)`)
+  return value
+}
+
+/** The character-card fields an AI uses to play the character. */
+function readCard(formData: FormData) {
+  const visibility = String(formData.get("visibility") ?? "PRIVATE")
+  if (!CHARACTER_VISIBILITIES.includes(visibility as never)) throw new Error("Unknown visibility")
+  return {
+    personality: text(formData, "personality", 8000),
+    scenario: text(formData, "scenario", 8000),
+    greeting: text(formData, "greeting", 8000),
+    exampleDialogue: text(formData, "exampleDialogue", 12000),
+    tags: parseTags(String(formData.get("tags") ?? "")),
+    visibility,
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { createCharacter } from "@/server/actions/characters"
-import CharacterForm from "@/components/characters/CharacterForm"
+import CharacterForm, { EMPTY_CHARACTER } from "@/components/characters/CharacterForm"
 
 export default function NewCharacterPage() {
   return (
@@ -16,7 +16,7 @@ export default function NewCharacterPage() {
           <CharacterForm
             action={createCharacter}
             submitLabel="Create Character"
-            defaults={{ name: "", title: "", avatarUrl: "", avatarSrc: null, color: "", bio: "" }}
+            defaults={EMPTY_CHARACTER}
           />
         </div>
       </div>

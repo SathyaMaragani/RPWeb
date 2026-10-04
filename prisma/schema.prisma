@@ -19,6 +19,24 @@ model User {
   worldMembers     WorldMember[]
   worldsOwned      World[]       @relation("WorldOwner")
   authoredMessages Message[]     @relation("MessageAuthor")
+  personas         Persona[]
+}
+
+/// Who the user is inside a roleplay. An AI character is told about the active
+/// persona, so it knows who it is talking to.
+model Persona {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  avatarUrl   String?
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Character {
@@ -41,6 +59,18 @@ model Character {
   /// Set whenever the design is saved. Versions the portrait URL, and decides
   /// between the design and an uploaded avatar: whichever is newer shows.
   appearanceUpdatedAt DateTime?
+
+  // Character card: what an AI needs to play this character. All optional,
+  // so characters made before cards existed are untouched.
+  personality     String?
+  scenario        String?
+  /// The opening message an AI-played character starts a chat with.
+  greeting        String?
+  /// Sample exchanges showing how they talk. Blocks separated by <START>.
+  exampleDialogue String?
+  tags            String[]  @default([])
+  /// PRIVATE, UNLISTED or PUBLIC. Only affects discovery, not world access.
+  visibility      String    @default("PRIVATE")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

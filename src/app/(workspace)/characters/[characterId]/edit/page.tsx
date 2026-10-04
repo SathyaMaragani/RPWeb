@@ -68,6 +68,12 @@ export default async function EditCharacterPage(
               avatarSrc: avatarSrc(character),
               color: character.color ?? "",
               bio: character.bio ?? "",
+              personality: character.personality ?? "",
+              scenario: character.scenario ?? "",
+              greeting: character.greeting ?? "",
+              exampleDialogue: character.exampleDialogue ?? "",
+              tags: character.tags.join(", "),
+              visibility: character.visibility,
             }}
           />
         </div>
