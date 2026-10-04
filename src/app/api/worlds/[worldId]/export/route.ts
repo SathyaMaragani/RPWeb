@@ -81,6 +81,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
         inviteCode: world.inviteCode,
         memory: world.memory,
         systemPrompt: world.systemPrompt,
+        summary: world.summary,
         createdAt: world.createdAt.toISOString(),
       },
       // The whole cast: anyone in the world can write as any of them.

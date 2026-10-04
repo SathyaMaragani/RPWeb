@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { requireUserId, requireWorldMembership } from "@/server/auth-guards"
 import { addSwipe, serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage } from "@/lib/messages"
-import { buildPrompt, cleanReply, fillVariables } from "@/lib/ai/prompt"
+import { buildPrompt, buildSummaryPrompt, cleanReply, fillVariables, fitHistory, SUMMARY_MAX } from "@/lib/ai/prompt"
 import { activateLore, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
 import { normalizeLorebook } from "@/lib/cards"
 import { isProviderId } from "@/lib/ai/providers"
 import { decryptSecret } from "@/server/ai/crypto"
-import { generateText, GenerationError } from "@/server/ai/generate"
+import { generateText, GenerationError, type GenerateRequest } from "@/server/ai/generate"
 
 /** How many recent messages are considered before the token budget trims them. */
 const HISTORY_LIMIT = 80
@@ -49,6 +49,8 @@ export async function generateReply(
         description: true,
         memory: true,
         systemPrompt: true,
+        summary: true,
+        summaryUntil: true,
         cast: { select: { character: { select: { id: true, name: true, title: true, bio: true } } } },
         lore: { where: { enabled: true } },
       },
@@ -96,27 +98,35 @@ export async function generateReply(
     history.slice(-LORE_SCAN_DEPTH).map((m) => m.content)
   )
 
+  const model = {
+    provider: preset.provider,
+    baseUrl: preset.baseUrl,
+    model: preset.model,
+    apiKey: decryptSecret(preset.apiKeyEnc),
+    temperature: preset.temperature,
+    maxTokens: preset.maxTokens,
+  }
+  const turns = history.map((m) => ({ characterId: m.characterId, characterName: m.character.name, content: m.content }))
+
+  // Whatever no longer fits in the prompt is folded into the rolling summary
+  // first, so a long story is not forgotten from the beginning.
+  const windowStart = history.at(-fitHistory(turns))?.timestamp
+  const summary = windowStart ? await refreshSummary(worldId, world, windowStart, model) : world.summary
+
   const prompt = buildPrompt({
     character,
     others: world.cast.map((c) => c.character).filter((c) => c.id !== character.id),
     userName,
     personaDescription: persona?.description,
     world,
+    summary,
     lore,
-    history: history.map((m) => ({ characterId: m.characterId, characterName: m.character.name, content: m.content })),
+    history: turns,
   })
 
   let text: string
   try {
-    text = await generateText({
-      provider: preset.provider,
-      baseUrl: preset.baseUrl,
-      model: preset.model,
-      apiKey: decryptSecret(preset.apiKeyEnc),
-      temperature: preset.temperature,
-      maxTokens: preset.maxTokens,
-      ...prompt,
-    })
+    text = await generateText({ ...model, ...prompt })
   } catch (error) {
     if (error instanceof GenerationError) return { ok: false, error: error.message }
     console.error("AI generation failed", error)
@@ -137,6 +147,65 @@ export async function generateReply(
       })
 
   return { ok: true, message: serializeMessage(message) }
+}
+
+/** Unsummarised older text needed before a summary is worth a model call. */
+const SUMMARY_TRIGGER = 2_000
+/** Most older text folded in per reply; a long backlog catches up over several. */
+const SUMMARY_CHUNK = 40_000
+
+/**
+ * Folds messages that have dropped out of the prompt window into the world's
+ * running summary, and returns the summary to use. Never fails the reply: if
+ * summarising goes wrong, the old summary is used and it is tried next time.
+ */
+async function refreshSummary(
+  worldId: string,
+  world: { summary: string | null; summaryUntil: Date | null },
+  windowStart: Date,
+  model: Omit<GenerateRequest, "system" | "messages">
+) {
+  const pending = await prisma.message.findMany({
+    where: {
+      worldId,
+      deletedAt: null,
+      timestamp: { lt: windowStart, ...(world.summaryUntil ? { gt: world.summaryUntil } : {}) },
+    },
+    orderBy: { timestamp: "asc" },
+    take: 300,
+    include: { character: { select: { name: true } } },
+  })
+
+  const chunk: typeof pending = []
+  let chars = 0
+  for (const m of pending) {
+    if (chunk.length && chars + m.content.length > SUMMARY_CHUNK) break
+    chunk.push(m)
+    chars += m.content.length
+  }
+  // ponytail: a few short dropped lines wait until enough pile up, so the AI
+  // can briefly miss them; lower SUMMARY_TRIGGER if that ever shows.
+  if (chars < SUMMARY_TRIGGER) return world.summary
+
+  try {
+    const text = await generateText({
+      ...model,
+      temperature: Math.min(model.temperature, 0.7),
+      ...buildSummaryPrompt(
+        world.summary,
+        chunk.map((m) => ({ characterName: m.character.name, content: m.content }))
+      ),
+    })
+    const summary = text.trim().slice(0, SUMMARY_MAX)
+    await prisma.world.update({
+      where: { id: worldId },
+      data: { summary, summaryUntil: chunk.at(-1)!.timestamp },
+    })
+    return summary
+  } catch (error) {
+    console.error("Summary update failed", error)
+    return world.summary
+  }
 }
 
 /**
@@ -182,9 +251,14 @@ export async function updateWorldAi(worldId: string, formData: FormData) {
   await requireWorldMembership(userId, worldId)
   const memory = (formData.get("memory") as string | null)?.trim() || null
   const systemPrompt = (formData.get("systemPrompt") as string | null)?.trim() || null
-  if ((memory?.length ?? 0) > 8000 || (systemPrompt?.length ?? 0) > 8000) {
-    throw new Error("Keep memory and instructions under 8,000 characters each")
+  const summary = (formData.get("summary") as string | null)?.trim() || null
+  if ((memory?.length ?? 0) > 8000 || (systemPrompt?.length ?? 0) > 8000 || (summary?.length ?? 0) > SUMMARY_MAX) {
+    throw new Error("Keep memory and instructions under 8,000 characters each, and the summary under 6,000")
   }
-  await prisma.world.update({ where: { id: worldId }, data: { memory, systemPrompt } })
+  // Clearing the summary starts it again from the first message.
+  await prisma.world.update({
+    where: { id: worldId },
+    data: { memory, systemPrompt, summary, ...(summary ? {} : { summaryUntil: null }) },
+  })
   revalidatePath(`/worlds/${worldId}`)
 }

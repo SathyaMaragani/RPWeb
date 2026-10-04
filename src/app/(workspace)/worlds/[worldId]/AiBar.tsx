@@ -8,7 +8,7 @@ import { DEFAULT_SYSTEM_PROMPT } from "@/lib/ai/prompt"
 
 export type AiCastMember = { id: string; name: string; aiEnabled: boolean; hasGreeting: boolean }
 export type AiPersona = { id: string; name: string; isDefault: boolean }
-export type AiWorldSettings = { memory: string | null; systemPrompt: string | null }
+export type AiWorldSettings = { memory: string | null; systemPrompt: string | null; summary: string | null }
 
 /**
  * Controls for AI-played characters: who replies, as which persona, and the
@@ -185,6 +185,21 @@ export default function AiBar({
                 maxLength={8000}
                 defaultValue={settings.memory ?? ""}
                 placeholder="Kael is secretly in love with Aria. They are travelling to the northern kingdom."
+                className="mt-1.5 block w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm placeholder-muted focus:border-accent focus:outline-none"
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Story so far
+              <span className="mt-0.5 block text-xs font-normal text-muted">
+                Written automatically as the chat outgrows what fits in one request, so early events aren&rsquo;t
+                forgotten. You can correct it; clear it to rebuild from the first message.
+              </span>
+              <textarea
+                name="summary"
+                rows={4}
+                maxLength={6000}
+                defaultValue={settings.summary ?? ""}
+                placeholder="Nothing yet. It appears once the story is long enough to need it."
                 className="mt-1.5 block w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm placeholder-muted focus:border-accent focus:outline-none"
               />
             </label>

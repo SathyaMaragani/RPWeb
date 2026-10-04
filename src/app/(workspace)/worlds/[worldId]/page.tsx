@@ -140,7 +140,7 @@ export default async function WorldPage(props: PageProps<"/worlds/[worldId]">) {
         })),
         personas,
         hasModel: modelCount > 0,
-        settings: { memory: world.memory, systemPrompt: world.systemPrompt },
+        settings: { memory: world.memory, systemPrompt: world.systemPrompt, summary: world.summary },
       }}
     />
   )

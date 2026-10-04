@@ -147,6 +147,7 @@ try {
         inviteCode: world.inviteCode,
         memory: world.memory,
         systemPrompt: world.systemPrompt,
+        summary: world.summary,
         createdAt: world.createdAt.toISOString(),
       },
       // The whole cast, not only the characters someone happens to play:
