@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
-import { Bot, Loader2, Settings2, Sparkles, X } from "lucide-react"
+import { BookOpen, Bot, ChevronRight, Loader2, Settings2, Sparkles, X } from "lucide-react"
 import { setCharacterAi, updateWorldAi } from "@/server/actions/ai"
 import { DEFAULT_SYSTEM_PROMPT } from "@/lib/ai/prompt"
 
@@ -160,6 +160,18 @@ export default function AiBar({
               ))}
             </ul>
           </section>
+
+          <Link
+            href={`/worlds/${worldId}/lore`}
+            className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition hover:border-accent/50"
+          >
+            <BookOpen size={16} className="text-accent-soft" />
+            <span className="flex-1">
+              Lorebook
+              <span className="block text-xs text-muted">Places, factions and history, given to the AI only when mentioned</span>
+            </span>
+            <ChevronRight size={16} className="text-muted" />
+          </Link>
 
           <form action={saveSettings} className="space-y-3">
             <label className="block text-sm font-medium">

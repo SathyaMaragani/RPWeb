@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check, Crown, Info, Pencil, Settings, X, Loader2, UserPlus } from "lucide-react"
+import { BookOpen, Copy, Check, Crown, Info, Pencil, Settings, X, Loader2, UserPlus } from "lucide-react"
 import { Avatar } from "@/components/layout/Sidebar"
 import { updateWorld, addCharacterToWorld } from "@/server/actions/worlds"
 import { characterColor, fallbackColor, BANNER_WIDTH, BANNER_ASPECT } from "@/lib/characters"
@@ -302,6 +302,13 @@ export default function WorldInfoPanel({
           </div>
         )}
       </section>
+
+      <a
+        href={`/worlds/${world.id}/lore`}
+        className="flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-medium text-muted transition hover:text-ink"
+      >
+        <BookOpen size={15} /> Lorebook
+      </a>
 
       <a
         href="/characters"

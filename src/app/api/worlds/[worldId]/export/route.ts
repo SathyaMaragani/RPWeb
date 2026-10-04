@@ -52,6 +52,8 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
     where: { id: worldId },
     include: {
       members: { include: { character: true, user: { select: { id: true, name: true } } } },
+      cast: { include: { character: true } },
+      lore: { orderBy: { createdAt: "asc" } },
       // Exclude messages the writer deleted; an export should match the chat.
       messages: {
         where: { deletedAt: null },
@@ -77,16 +79,40 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
         name: world.name,
         description: world.description,
         inviteCode: world.inviteCode,
+        memory: world.memory,
+        systemPrompt: world.systemPrompt,
         createdAt: world.createdAt.toISOString(),
       },
-      characters: world.members.map((m) => ({
-        id: m.character.id,
-        name: m.character.name,
-        avatarUrl: m.character.avatarUrl,
-        bio: m.character.bio,
-        appearance: m.character.appearance,
-        role: m.role,
-        playedBy: m.user.name,
+      // The whole cast: anyone in the world can write as any of them.
+      characters: world.cast.map((entry) => {
+        const playedBy = world.members.find((m) => m.characterId === entry.characterId)
+        return {
+          id: entry.character.id,
+          name: entry.character.name,
+          avatarUrl: entry.character.avatarUrl,
+          title: entry.character.title,
+          bio: entry.character.bio,
+          appearance: entry.character.appearance,
+          personality: entry.character.personality,
+          scenario: entry.character.scenario,
+          greeting: entry.character.greeting,
+          exampleDialogue: entry.character.exampleDialogue,
+          tags: entry.character.tags,
+          visibility: entry.character.visibility,
+          aiEnabled: entry.aiEnabled,
+          role: playedBy?.role ?? null,
+          playedBy: playedBy?.user.name ?? null,
+        }
+      }),
+      lore: world.lore.map((l) => ({
+        name: l.name,
+        keywords: l.keywords,
+        content: l.content,
+        constant: l.constant,
+        enabled: l.enabled,
+        caseSensitive: l.caseSensitive,
+        wholeWord: l.wholeWord,
+        priority: l.priority,
       })),
       messages: world.messages.map((m) => ({
         id: m.id,
@@ -95,6 +121,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
         content: m.content,
         format: m.format,
         isImported: m.isImported,
+        aiGenerated: m.aiGenerated,
         timestamp: m.timestamp.toISOString(),
       })),
     }

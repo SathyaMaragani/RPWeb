@@ -142,6 +142,7 @@ model World {
   imports  TelegramImport[]
   cast     WorldCharacter[]
   banner   WorldBanner?
+  lore     LoreEntry[]
 }
 
 /// Uploaded banner bytes. Separate from World for the same reason avatars are
@@ -228,4 +229,29 @@ model TelegramImport {
   updatedAt  DateTime @updatedAt
 
   world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+}
+
+/// A lorebook entry: world knowledge an AI is only given when it is relevant,
+/// meaning when one of its keywords appears in the recent conversation.
+/// Keeps prompts short while the world can hold far more detail.
+model LoreEntry {
+  id            String   @id @default(cuid())
+  worldId       String
+  name          String
+  keywords      String[] @default([])
+  content       String
+  /// Always included, whatever the conversation says.
+  constant      Boolean  @default(false)
+  enabled       Boolean  @default(true)
+  caseSensitive Boolean  @default(false)
+  /// Match "elf" but not "self".
+  wholeWord     Boolean  @default(true)
+  /// Higher goes in first when there is not room for everything.
+  priority      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@index([worldId])
 }

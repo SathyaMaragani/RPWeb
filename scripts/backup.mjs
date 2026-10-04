@@ -103,6 +103,7 @@ try {
     include: {
       members: { include: { character: true, user: { select: { id: true, name: true, email: true } } } },
       cast: { include: { character: true } },
+      lore: { orderBy: { createdAt: "asc" } },
       // deletedAt: a deleted message should not live on in the backup.
       messages: {
         where: { deletedAt: null },
@@ -127,6 +128,8 @@ try {
         name: world.name,
         description: world.description,
         inviteCode: world.inviteCode,
+        memory: world.memory,
+        systemPrompt: world.systemPrompt,
         createdAt: world.createdAt.toISOString(),
       },
       // The whole cast, not only the characters someone happens to play:
@@ -141,10 +144,27 @@ try {
           title: entry.character.title,
           bio: entry.character.bio,
           appearance: entry.character.appearance,
+          personality: entry.character.personality,
+          scenario: entry.character.scenario,
+          greeting: entry.character.greeting,
+          exampleDialogue: entry.character.exampleDialogue,
+          tags: entry.character.tags,
+          visibility: entry.character.visibility,
+          aiEnabled: entry.aiEnabled,
           role: playedBy?.role ?? null,
           playedBy: playedBy?.user.name ?? null,
         }
       }),
+      lore: world.lore.map((l) => ({
+        name: l.name,
+        keywords: l.keywords,
+        content: l.content,
+        constant: l.constant,
+        enabled: l.enabled,
+        caseSensitive: l.caseSensitive,
+        wholeWord: l.wholeWord,
+        priority: l.priority,
+      })),
       messages: world.messages.map((m) => ({
         id: m.id,
         character: m.character.name,
@@ -152,6 +172,7 @@ try {
         content: m.content,
         format: m.format,
         isImported: m.isImported,
+        aiGenerated: m.aiGenerated,
         timestamp: m.timestamp.toISOString(),
       })),
     }

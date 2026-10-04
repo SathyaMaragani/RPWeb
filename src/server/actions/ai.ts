@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { requireUserId, requireWorldMembership } from "@/server/auth-guards"
 import { serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage } from "@/lib/messages"
 import { buildPrompt, cleanReply, fillVariables } from "@/lib/ai/prompt"
+import { activateLore, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
 import { isProviderId } from "@/lib/ai/providers"
 import { decryptSecret } from "@/server/ai/crypto"
 import { generateText, GenerationError } from "@/server/ai/generate"
@@ -48,6 +49,7 @@ export async function generateReply(
         memory: true,
         systemPrompt: true,
         cast: { select: { character: { select: { id: true, name: true, title: true, bio: true } } } },
+        lore: { where: { enabled: true } },
       },
     }),
     prisma.modelPreset.findFirst({ where: { userId, isDefault: true } }),
@@ -83,12 +85,20 @@ export async function generateReply(
 
   const character = castEntry.character
   const userName = persona?.name ?? member.character.name
+  // Keywords are looked for in the latest few messages, so lore comes and goes
+  // with what the scene is actually about.
+  const lore = activateLore(
+    world.lore,
+    history.slice(-LORE_SCAN_DEPTH).map((m) => m.content)
+  )
+
   const prompt = buildPrompt({
     character,
     others: world.cast.map((c) => c.character).filter((c) => c.id !== character.id),
     userName,
     personaDescription: persona?.description,
     world,
+    lore,
     history: history.map((m) => ({ characterId: m.characterId, characterName: m.character.name, content: m.content })),
   })
 

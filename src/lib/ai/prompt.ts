@@ -25,6 +25,8 @@ export type PromptInput = {
   userName: string
   personaDescription?: string | null
   world: { name: string; description?: string | null; memory?: string | null; systemPrompt?: string | null }
+  /** Lorebook entries already activated for this reply. */
+  lore?: { name: string; content: string }[]
   /** Oldest first. */
   history: { characterId: string; characterName: string; content: string }[]
   /** Rough budget for history, in characters (about four per token). */
@@ -63,6 +65,10 @@ export function buildPrompt(input: PromptInput): { system: string; messages: Cha
       input.others
         .map((o) => `- ${o.name}${o.title ? `, ${o.title}` : ""}${o.bio ? `: ${o.bio.slice(0, 300)}` : ""}`)
         .join("\n")
+    ),
+    section(
+      "World lore (relevant right now)",
+      input.lore?.map((l) => `### ${l.name}\n${fill(l.content)}`).join("\n\n")
     ),
     section("Memory (keep these facts consistent)", fill(input.world.memory)),
     section("Example dialogue (style reference only)", fill(c.exampleDialogue)),
