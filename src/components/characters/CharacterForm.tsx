@@ -235,7 +235,7 @@ export default function CharacterForm({
         <Field label="Personality" hint="Traits, manner, how they speak and what they want.">
           <textarea rows={4} {...cardField("personality")} className={inputClass} />
         </Field>
-        <Field label="Scenario" hint="The situation the story opens in. {{char}} and {{user}} work here.">
+        <Field label="Scenario" hint="The situation the story opens in. {{char}}, {{user}} and {{persona}} work here.">
           <textarea rows={3} {...cardField("scenario")} className={inputClass} />
         </Field>
         <Field label="First message" hint="What they say to open a new chat, in RP formatting.">

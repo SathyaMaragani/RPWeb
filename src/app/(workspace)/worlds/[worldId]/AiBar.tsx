@@ -206,7 +206,7 @@ export default function AiBar({
             <label className="block text-sm font-medium">
               Custom instructions
               <span className="mt-0.5 block text-xs font-normal text-muted">
-                Replaces the default instructions. {"{{char}}"} and {"{{user}}"} are filled in.
+                Replaces the default instructions. {"{{char}}"}, {"{{user}}"}, {"{{persona}}"} and {"{{scenario}}"} are filled in.
               </span>
               <textarea
                 name="systemPrompt"

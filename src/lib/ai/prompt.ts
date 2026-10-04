@@ -41,9 +41,21 @@ export const DEFAULT_SYSTEM_PROMPT =
   'Put actions in *asterisks*, spoken words in "quotes" and inner thoughts in **double asterisks**. ' +
   "Write one to three paragraphs, and don't start with your own name."
 
-/** Expands {{char}} and {{user}}, in any letter case. */
-export function fillVariables(text: string, char: string, user: string) {
-  return text.replace(/\{\{\s*char\s*\}\}/gi, char).replace(/\{\{\s*user\s*\}\}/gi, user)
+/**
+ * Expands {{char}}, {{user}}, {{persona}} and {{scenario}}, in any letter case.
+ * One pass, so a value that itself contains a variable is left as written
+ * rather than expanded again (or looping).
+ */
+export function fillVariables(
+  text: string,
+  char: string,
+  user: string,
+  extra: { persona?: string | null; scenario?: string | null } = {}
+) {
+  return text.replace(/\{\{\s*(char|user|persona|scenario)\s*\}\}/gi, (_, key: string) => {
+    const k = key.toLowerCase()
+    return k === "char" ? char : k === "user" ? user : ((k === "persona" ? extra.persona : extra.scenario) ?? "")
+  })
 }
 
 const section = (title: string, body: string | null | undefined) =>
@@ -51,7 +63,10 @@ const section = (title: string, body: string | null | undefined) =>
 
 export function buildPrompt(input: PromptInput): { system: string; messages: ChatTurn[] } {
   const { character: c, userName } = input
-  const fill = (text: string | null | undefined) => (text ? fillVariables(text, c.name, userName) : text)
+  const persona = input.personaDescription ?? null
+  const scenario = c.scenario ? fillVariables(c.scenario, c.name, userName, { persona }) : null
+  const fill = (text: string | null | undefined) =>
+    text ? fillVariables(text, c.name, userName, { persona, scenario }) : text
 
   const system = [
     fill(input.world.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT),
@@ -59,7 +74,7 @@ export function buildPrompt(input: PromptInput): { system: string; messages: Cha
       c.name,
       [c.title, c.bio, c.personality && `Personality: ${c.personality}`].filter(Boolean).map(fill).join("\n")
     ),
-    section("Scenario", fill(c.scenario)),
+    section("Scenario", scenario),
     section(`The world: ${input.world.name}`, input.world.description),
     section(`${userName} (who you are writing to)`, fill(input.personaDescription)),
     section(
