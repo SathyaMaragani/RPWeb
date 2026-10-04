@@ -16,6 +16,8 @@ export type PresetRow = {
   keyHint: string
   temperature: number
   maxTokens: number
+  topP: number | null
+  contextTokens: number
   isDefault: boolean
 }
 
@@ -72,6 +74,22 @@ function PresetFields({ preset }: { preset?: PresetRow }) {
       <label className="block text-xs text-muted">
         Max reply tokens <span>(ignored by Claude)</span>
         <input name="maxTokens" type="number" min={50} max={8000} step={50} defaultValue={preset?.maxTokens ?? 800} className={input} />
+      </label>
+      <label className="block text-xs text-muted">
+        Top-p <span>(blank for the provider default; ignored by Claude)</span>
+        <input name="topP" type="number" min={0.01} max={1} step={0.01} defaultValue={preset?.topP ?? ""} className={input} />
+      </label>
+      <label className="block text-xs text-muted">
+        Recent chat sent, in tokens <span>(older chat goes into the summary)</span>
+        <input
+          name="contextTokens"
+          type="number"
+          min={1000}
+          max={200000}
+          step={500}
+          defaultValue={preset?.contextTokens ?? 6000}
+          className={input}
+        />
       </label>
     </div>
   )

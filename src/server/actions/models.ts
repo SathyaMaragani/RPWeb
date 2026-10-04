@@ -14,6 +14,9 @@ function readPresetForm(formData: FormData) {
   const rawUrl = (formData.get("baseUrl") as string | null)?.trim() || ""
   const temperature = Number(formData.get("temperature") ?? 0.9)
   const maxTokens = Number(formData.get("maxTokens") ?? 800)
+  const rawTopP = String(formData.get("topP") ?? "").trim()
+  const topP = rawTopP ? Number(rawTopP) : null
+  const contextTokens = Number(formData.get("contextTokens") ?? 6000)
 
   if (!name || name.length > 60) throw new Error("Give the preset a name (up to 60 characters)")
   if (!isProviderId(provider)) throw new Error("Unknown provider")
@@ -22,8 +25,12 @@ function readPresetForm(formData: FormData) {
   if (!(Number.isInteger(maxTokens) && maxTokens >= 50 && maxTokens <= 8000)) {
     throw new Error("Max tokens must be a whole number between 50 and 8000")
   }
+  if (topP !== null && !(topP > 0 && topP <= 1)) throw new Error("Top-p must be between 0 and 1, or blank")
+  if (!(Number.isInteger(contextTokens) && contextTokens >= 1000 && contextTokens <= 200000)) {
+    throw new Error("Context size must be a whole number between 1,000 and 200,000 tokens")
+  }
   const baseUrl = provider === "custom" ? checkEndpointUrl(rawUrl) : null
-  return { name, provider, model, baseUrl, temperature, maxTokens }
+  return { name, provider, model, baseUrl, temperature, maxTokens, topP, contextTokens }
 }
 
 async function requireOwnPreset(userId: string, presetId: string) {

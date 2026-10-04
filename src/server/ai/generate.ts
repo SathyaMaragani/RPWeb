@@ -8,6 +8,7 @@ export type GenerateRequest = {
   model: string
   apiKey: string
   temperature: number
+  topP?: number | null
   maxTokens: number
   system: string
   messages: ChatTurn[]
@@ -31,7 +32,7 @@ async function viaAnthropic(req: GenerateRequest) {
       model: req.model,
       // Current Claude models think before answering and that thinking counts
       // against max_tokens, so the reply length is steered by the prompt
-      // instead. Temperature is not sent: current models reject it.
+      // instead. Temperature and top-p are not sent: current models reject them.
       max_tokens: 16000,
       system: req.system,
       messages: req.messages,
@@ -69,6 +70,7 @@ async function viaOpenAICompatible(req: GenerateRequest) {
         model: req.model,
         messages: [{ role: "system", content: req.system }, ...req.messages],
         temperature: req.temperature,
+        ...(req.topP != null ? { top_p: req.topP } : {}),
         max_tokens: req.maxTokens,
       }),
       // Never follow a redirect: the URL was checked, wherever it points was not.

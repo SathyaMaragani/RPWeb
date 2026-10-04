@@ -7,32 +7,27 @@ import { addSwipe, serializeMessage, MAX_MESSAGE_LENGTH, type SerializedMessage 
 import { buildPrompt, buildSummaryPrompt, cleanReply, fillVariables, fitHistory, SUMMARY_MAX } from "@/lib/ai/prompt"
 import { activateLore, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
 import { normalizeLorebook } from "@/lib/cards"
-import { isProviderId } from "@/lib/ai/providers"
+import { isProviderId, PROVIDERS } from "@/lib/ai/providers"
+import { estimateTokens } from "@/lib/characters"
 import { decryptSecret } from "@/server/ai/crypto"
 import { generateText, GenerationError, type GenerateRequest } from "@/server/ai/generate"
 
-/** How many recent messages are considered before the token budget trims them. */
-const HISTORY_LIMIT = 80
+/**
+ * How many recent messages are fetched before the token budget trims them.
+ * Generous, so a preset with a large context size actually gets to use it.
+ */
+const HISTORY_LIMIT = 300
 
 type ReplyResult = { ok: true; message: SerializedMessage } | { ok: false; error: string }
+type ReplyOptions = { personaId?: string | null; regenerateMessageId?: string | null }
 
 /**
- * Writes the next message as an AI-played character, using the requester's
- * default model preset and their own API key.
- *
- * Returns errors instead of throwing them: Next.js hides thrown messages in
- * production, and "your key was rejected" is something the user needs to see.
- *
- * With `regenerateMessageId`, rewrites that message instead. Only the latest
- * message in the world can be regenerated, and only if a model wrote it.
+ * Gathers everything a reply needs: membership, the character and world,
+ * the requester's default model, persona, history and activated lore.
+ * Shared by real replies and the prompt preview, so the preview shows exactly
+ * what a reply would send.
  */
-export async function generateReply(
-  worldId: string,
-  characterId: string,
-  options: { personaId?: string | null; regenerateMessageId?: string | null } = {}
-): Promise<ReplyResult> {
-  const userId = await requireUserId()
-
+async function prepareReply(userId: string, worldId: string, characterId: string, options: ReplyOptions) {
   const [member, castEntry, world, preset, persona, recent] = await Promise.all([
     prisma.worldMember.findUnique({
       where: { worldId_userId: { worldId, userId } },
@@ -49,6 +44,7 @@ export async function generateReply(
         description: true,
         memory: true,
         systemPrompt: true,
+        postHistory: true,
         summary: true,
         summaryUntil: true,
         cast: { select: { character: { select: { id: true, name: true, title: true, bio: true } } } },
@@ -71,10 +67,10 @@ export async function generateReply(
     }),
   ])
 
-  if (!member || !world) return { ok: false, error: "You're not a member of this world." }
-  if (!castEntry?.aiEnabled) return { ok: false, error: "That character isn't AI-played in this world." }
+  if (!member || !world) return { error: "You're not a member of this world." } as const
+  if (!castEntry?.aiEnabled) return { error: "That character isn't AI-played in this world." } as const
   if (!preset || !isProviderId(preset.provider)) {
-    return { ok: false, error: "Add an AI model in Settings first: choose a provider and paste your API key." }
+    return { error: "Add an AI model in Settings first: choose a provider and paste your API key." } as const
   }
 
   let history = recent.reverse()
@@ -82,63 +78,97 @@ export async function generateReply(
   if (options.regenerateMessageId) {
     const last = history.at(-1)
     if (!last || last.id !== options.regenerateMessageId || !last.aiGenerated) {
-      return { ok: false, error: "Only the latest AI reply can be regenerated." }
+      return { error: "Only the latest AI reply can be regenerated." } as const
     }
     regenerating = last
     history = history.slice(0, -1)
   }
 
   const character = castEntry.character
-  const userName = persona?.name ?? member.character.name
   // Keywords are looked for in the latest few messages, so lore comes and goes
-  // with what the scene is actually about.
-  // The world's lorebook plus any lore the character carries from its card.
+  // with what the scene is actually about. The world's lorebook plus any lore
+  // the character carries from its card.
   const lore = activateLore(
-    [...world.lore, ...normalizeLorebook(castEntry.character.lorebook)],
+    [...world.lore, ...normalizeLorebook(character.lorebook)],
     history.slice(-LORE_SCAN_DEPTH).map((m) => m.content)
   )
+  const turns = history.map((m) => ({ characterId: m.characterId, characterName: m.character.name, content: m.content }))
+  const historyBudget = preset.contextTokens * 4
 
+  return {
+    preset: { ...preset, provider: preset.provider },
+    world,
+    history,
+    regenerating,
+    historyBudget,
+    /** Builds the prompt with a given summary (fresh for replies, stored for previews). */
+    build: (summary: string | null) =>
+      buildPrompt({
+        character,
+        others: world.cast.map((c) => c.character).filter((c) => c.id !== character.id),
+        userName: persona?.name ?? member.character.name,
+        personaDescription: persona?.description,
+        world,
+        summary,
+        lore,
+        history: turns,
+        historyBudget,
+      }),
+    turns,
+    character,
+  }
+}
+
+/**
+ * Writes the next message as an AI-played character, using the requester's
+ * default model preset and their own API key.
+ *
+ * Returns errors instead of throwing them: Next.js hides thrown messages in
+ * production, and "your key was rejected" is something the user needs to see.
+ *
+ * With `regenerateMessageId`, adds a new version of that message instead. Only
+ * the latest message in the world can be regenerated, and only if a model wrote it.
+ */
+export async function generateReply(
+  worldId: string,
+  characterId: string,
+  options: ReplyOptions = {}
+): Promise<ReplyResult> {
+  const userId = await requireUserId()
+  const ctx = await prepareReply(userId, worldId, characterId, options)
+  if ("error" in ctx) return { ok: false, error: ctx.error as string }
+
+  const { preset } = ctx
   const model = {
     provider: preset.provider,
     baseUrl: preset.baseUrl,
     model: preset.model,
     apiKey: decryptSecret(preset.apiKeyEnc),
     temperature: preset.temperature,
+    topP: preset.topP,
     maxTokens: preset.maxTokens,
   }
-  const turns = history.map((m) => ({ characterId: m.characterId, characterName: m.character.name, content: m.content }))
 
   // Whatever no longer fits in the prompt is folded into the rolling summary
   // first, so a long story is not forgotten from the beginning.
-  const windowStart = history.at(-fitHistory(turns))?.timestamp
-  const summary = windowStart ? await refreshSummary(worldId, world, windowStart, model) : world.summary
-
-  const prompt = buildPrompt({
-    character,
-    others: world.cast.map((c) => c.character).filter((c) => c.id !== character.id),
-    userName,
-    personaDescription: persona?.description,
-    world,
-    summary,
-    lore,
-    history: turns,
-  })
+  const windowStart = ctx.history.at(-fitHistory(ctx.turns, ctx.historyBudget))?.timestamp
+  const summary = windowStart ? await refreshSummary(worldId, ctx.world, windowStart, model) : ctx.world.summary
 
   let text: string
   try {
-    text = await generateText({ ...model, ...prompt })
+    text = await generateText({ ...model, ...ctx.build(summary) })
   } catch (error) {
     if (error instanceof GenerationError) return { ok: false, error: error.message }
     console.error("AI generation failed", error)
     return { ok: false, error: "Something went wrong while generating the reply." }
   }
 
-  const content = cleanReply(text, character.name).slice(0, MAX_MESSAGE_LENGTH)
+  const content = cleanReply(text, ctx.character.name).slice(0, MAX_MESSAGE_LENGTH)
   // A regenerated reply keeps its earlier versions to swipe back to.
-  const message = regenerating
+  const message = ctx.regenerating
     ? await prisma.message.update({
-        where: { id: regenerating.id },
-        data: addSwipe(regenerating, content),
+        where: { id: ctx.regenerating.id },
+        data: addSwipe(ctx.regenerating, content),
         include: { character: true },
       })
     : await prisma.message.create({
@@ -147,6 +177,53 @@ export async function generateReply(
       })
 
   return { ok: true, message: serializeMessage(message) }
+}
+
+export type PromptPreview =
+  | {
+      ok: true
+      model: string
+      sections: { title: string; tokens: number }[]
+      historyMessages: number
+      totalTokens: number
+      system: string
+      messages: { role: string; content: string }[]
+    }
+  | { ok: false; error: string }
+
+/**
+ * What the next reply for a character would send, without calling the model:
+ * the full prompt and roughly how many tokens each part uses. Uses the stored
+ * summary, so previewing never spends anything.
+ */
+export async function previewPrompt(
+  worldId: string,
+  characterId: string,
+  personaId?: string | null
+): Promise<PromptPreview> {
+  const userId = await requireUserId()
+  const ctx = await prepareReply(userId, worldId, characterId, { personaId })
+  if ("error" in ctx) return { ok: false, error: ctx.error as string }
+
+  const prompt = ctx.build(ctx.world.summary)
+  const [instructions, ...rest] = prompt.system.split("\n\n## ")
+  const sections = [
+    { title: "Instructions", tokens: estimateTokens(instructions) },
+    ...rest.map((part) => ({ title: part.split("\n")[0], tokens: estimateTokens(part) })),
+  ]
+  const history = prompt.messages.slice(0, -1)
+  sections.push({ title: `Chat history (${history.length} messages)`, tokens: estimateTokens(history.map((m) => m.content).join("\n")) })
+  sections.push({ title: "Request for the reply", tokens: estimateTokens(prompt.messages.at(-1)!.content) })
+
+  return {
+    ok: true,
+    model: `${PROVIDERS[ctx.preset.provider].label} · ${ctx.preset.model}`,
+    sections,
+    historyMessages: history.length,
+    totalTokens: sections.reduce((n, s) => n + s.tokens, 0),
+    system: prompt.system,
+    messages: prompt.messages,
+  }
 }
 
 /** Unsummarised older text needed before a summary is worth a model call. */
@@ -252,13 +329,19 @@ export async function updateWorldAi(worldId: string, formData: FormData) {
   const memory = (formData.get("memory") as string | null)?.trim() || null
   const systemPrompt = (formData.get("systemPrompt") as string | null)?.trim() || null
   const summary = (formData.get("summary") as string | null)?.trim() || null
-  if ((memory?.length ?? 0) > 8000 || (systemPrompt?.length ?? 0) > 8000 || (summary?.length ?? 0) > SUMMARY_MAX) {
+  const postHistory = (formData.get("postHistory") as string | null)?.trim() || null
+  if (
+    (memory?.length ?? 0) > 8000 ||
+    (systemPrompt?.length ?? 0) > 8000 ||
+    (postHistory?.length ?? 0) > 2000 ||
+    (summary?.length ?? 0) > SUMMARY_MAX
+  ) {
     throw new Error("Keep memory and instructions under 8,000 characters each, and the summary under 6,000")
   }
   // Clearing the summary starts it again from the first message.
   await prisma.world.update({
     where: { id: worldId },
-    data: { memory, systemPrompt, summary, ...(summary ? {} : { summaryUntil: null }) },
+    data: { memory, systemPrompt, postHistory, summary, ...(summary ? {} : { summaryUntil: null }) },
   })
   revalidatePath(`/worlds/${worldId}`)
 }

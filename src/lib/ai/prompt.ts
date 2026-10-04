@@ -24,7 +24,14 @@ export type PromptInput = {
   /** Who the AI is writing to: the persona's name, or the person's own character. */
   userName: string
   personaDescription?: string | null
-  world: { name: string; description?: string | null; memory?: string | null; systemPrompt?: string | null }
+  world: {
+    name: string
+    description?: string | null
+    memory?: string | null
+    systemPrompt?: string | null
+    /** Placed after the history, in the final request. */
+    postHistory?: string | null
+  }
   /** The rolling "story so far", covering messages too old to include. */
   summary?: string | null
   /** Lorebook entries already activated for this reply. */
@@ -103,7 +110,9 @@ export function buildPrompt(input: PromptInput): { system: string; messages: Cha
 
   // Always end on a user turn: current models refuse a trailing assistant
   // message (prefill), and it says plainly what is wanted.
-  return { system, messages: [...recent, { role: "user", content: `[Write ${c.name}'s next reply.]` }] }
+  const note = fill(input.world.postHistory?.trim())
+  const request = `[Write ${c.name}'s next reply.]` + (note ? `\n\n${note}` : "")
+  return { system, messages: [...recent, { role: "user", content: request }] }
 }
 
 /** Default room for recent messages, in characters (about four per token). */

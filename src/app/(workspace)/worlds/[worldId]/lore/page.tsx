@@ -7,6 +7,7 @@ import { createLoreEntry, deleteLoreEntry, updateLoreEntry } from "@/server/acti
 import { LORE_BUDGET, LORE_SCAN_DEPTH } from "@/lib/ai/lore"
 import { estimateTokens } from "@/lib/characters"
 import { PageHeader } from "@/components/layout/PageHeader"
+import LoreTransfer from "./LoreTransfer"
 
 type EntryDefaults = {
   name: string
@@ -120,6 +121,8 @@ export default async function LorePage(props: PageProps<"/worlds/[worldId]/lore"
         title={`${world.name} lore`}
         subtitle={`Knowledge AI characters get only when it's relevant: an entry is added when one of its keywords appears in the last ${LORE_SCAN_DEPTH} messages. Up to about ${estimateTokens("x".repeat(LORE_BUDGET)).toLocaleString()} tokens of lore per reply, highest priority first.`}
       />
+
+      <LoreTransfer worldId={worldId} worldName={world.name} />
 
       <details open={world.lore.length === 0} className="mb-6 rounded-2xl border border-dashed border-line bg-surface p-4 open:space-y-4">
         <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-accent-soft">

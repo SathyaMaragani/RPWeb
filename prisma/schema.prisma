@@ -39,6 +39,10 @@ model ModelPreset {
   keyHint     String
   temperature Float    @default(0.9)
   maxTokens   Int      @default(800)
+  /// Nucleus sampling. Null leaves it to the provider; Claude ignores it.
+  topP        Float?
+  /// How much recent chat goes into each request, in tokens (roughly).
+  contextTokens Int    @default(6000)
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -137,6 +141,9 @@ model World {
   memory          String?
   /// Replaces the default instructions AI characters are given here.
   systemPrompt    String?
+  /// A note placed after the chat history, right before the AI writes:
+  /// the strongest place for a standing reminder (tone, length, rules).
+  postHistory     String?
   /// Rolling "story so far" for AI replies, covering messages too old to fit
   /// in a prompt. Written by the model, editable by members.
   summary         String?

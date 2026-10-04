@@ -67,9 +67,32 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
     return new NextResponse("World not found", { status: 404 })
   }
 
-  const format = request.nextUrl.searchParams.get("format") === "html" ? "html" : "json"
+  const requested = request.nextUrl.searchParams.get("format")
+  const format = requested === "html" || requested === "md" || requested === "txt" ? requested : "json"
   const stamp = new Date().toISOString().slice(0, 10)
   const filename = `${slugify(world.name)}-${stamp}.${format}`
+
+  // Plain transcripts, for reading or pasting elsewhere: one block per message.
+  if (format === "md" || format === "txt") {
+    const md = format === "md"
+    const when = (d: Date) => d.toISOString().slice(0, 16).replace("T", " ")
+    const header = md
+      ? `# ${world.name}\n\n${world.description ? `${world.description}\n\n` : ""}_Exported ${when(new Date())} UTC_\n\n---\n\n`
+      : `${world.name}\n${"=".repeat(world.name.length)}\n\n${world.description ? `${world.description}\n\n` : ""}Exported ${when(new Date())} UTC\n\n`
+    const body = world.messages
+      .map((m) =>
+        md
+          ? `**${m.character.name}** · ${when(m.timestamp)}\n\n${m.content}`
+          : `[${when(m.timestamp)}] ${m.character.name}:\n${m.content}`
+      )
+      .join(md ? "\n\n---\n\n" : "\n\n")
+    return new NextResponse(header + body + "\n", {
+      headers: {
+        "Content-Type": `${md ? "text/markdown" : "text/plain"}; charset=utf-8`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    })
+  }
 
   if (format === "json") {
     const payload = {
@@ -81,6 +104,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/worlds/[
         inviteCode: world.inviteCode,
         memory: world.memory,
         systemPrompt: world.systemPrompt,
+        postHistory: world.postHistory,
         summary: world.summary,
         createdAt: world.createdAt.toISOString(),
       },

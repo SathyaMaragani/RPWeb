@@ -86,12 +86,16 @@ export function parseCard(raw: unknown): ImportedCard {
 }
 
 function parseBook(book: unknown, warnings: string[]): CardLoreEntry[] {
-  if (!isRecord(book) || !Array.isArray(book.entries)) return []
+  if (!isRecord(book)) return []
+  // Character books keep entries in an array; SillyTavern World Info files in
+  // an object keyed by id. Both carry the same kind of entry.
+  const entries = Array.isArray(book.entries) ? book.entries : isRecord(book.entries) ? Object.values(book.entries) : []
   const out: CardLoreEntry[] = []
-  for (const e of book.entries) {
+  for (const e of entries) {
     if (!isRecord(e)) continue
     const content = str(e.content).trim()
-    const keywords = (Array.isArray(e.keys) ? e.keys : [])
+    const rawKeys = Array.isArray(e.keys) ? e.keys : Array.isArray(e.key) ? e.key : []
+    const keywords = rawKeys
       .filter((k): k is string => typeof k === "string" && k.trim().length > 0)
       .map((k) => k.trim().slice(0, 60))
       .slice(0, 30)
@@ -101,20 +105,60 @@ function parseBook(book: unknown, warnings: string[]): CardLoreEntry[] {
       warnings.push(`Only the first ${LORE_ENTRIES_MAX} lorebook entries were imported.`)
       break
     }
+    // Higher goes in first in these formats, as it does here.
+    const priority = [e.priority, e.order, e.insertion_order].find((v) => typeof v === "number") as number | undefined
     out.push({
       name: (str(e.name).trim() || str(e.comment).trim() || keywords[0] || "Entry").slice(0, 80),
       keywords,
       content: content.slice(0, LORE_ENTRY_MAX),
       constant,
-      enabled: e.enabled !== false,
-      caseSensitive: e.case_sensitive === true,
-      wholeWord: true,
-      // Tavern priority is "higher goes in first", like ours; fall back to
-      // insertion_order, which the same tools treat the same way.
-      priority: clampInt(typeof e.priority === "number" ? e.priority : Number(e.insertion_order) || 0),
+      enabled: e.enabled !== false && e.disable !== true,
+      caseSensitive: e.case_sensitive === true || e.caseSensitive === true,
+      wholeWord: e.matchWholeWords !== false,
+      priority: clampInt(priority ?? 0),
     })
   }
   return out
+}
+
+/**
+ * Reads a lorebook file: SillyTavern World Info, a character book on its own,
+ * or a whole character card (its book is used). Throws if there is none.
+ */
+export function parseLorebookFile(raw: unknown): { entries: CardLoreEntry[]; warnings: string[] } {
+  if (!isRecord(raw)) throw new Error("That file isn't a lorebook.")
+  const warnings: string[] = []
+  const card = (raw.spec === "chara_card_v2" || raw.spec === "chara_card_v3") && isRecord(raw.data) ? raw.data : null
+  const book = card ? card.character_book : raw.entries !== undefined ? raw : raw.character_book
+  const entries = parseBook(book, warnings)
+  if (entries.length === 0) throw new Error("No usable lorebook entries in that file.")
+  return { entries, warnings }
+}
+
+/** Lore as a SillyTavern World Info file, which most tools can import. */
+export function toWorldInfo(name: string, entries: CardLoreEntry[]) {
+  return {
+    name,
+    entries: Object.fromEntries(
+      entries.map((e, uid) => [
+        String(uid),
+        {
+          uid,
+          key: e.keywords,
+          keysecondary: [],
+          comment: e.name,
+          content: e.content,
+          constant: e.constant,
+          selective: false,
+          order: e.priority,
+          position: 0,
+          disable: !e.enabled,
+          caseSensitive: e.caseSensitive,
+          matchWholeWords: e.wholeWord,
+        },
+      ])
+    ),
+  }
 }
 
 const clampInt = (n: number) => Math.max(-100, Math.min(100, Math.round(n)))

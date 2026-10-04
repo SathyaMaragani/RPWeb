@@ -2,13 +2,18 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
-import { BookOpen, Bot, ChevronRight, Loader2, Settings2, Sparkles, X } from "lucide-react"
-import { setCharacterAi, updateWorldAi } from "@/server/actions/ai"
+import { BookOpen, Bot, ChevronRight, Eye, Loader2, Settings2, Sparkles, X } from "lucide-react"
+import { previewPrompt, setCharacterAi, updateWorldAi, type PromptPreview } from "@/server/actions/ai"
 import { DEFAULT_SYSTEM_PROMPT } from "@/lib/ai/prompt"
 
 export type AiCastMember = { id: string; name: string; aiEnabled: boolean; hasGreeting: boolean }
 export type AiPersona = { id: string; name: string; isDefault: boolean }
-export type AiWorldSettings = { memory: string | null; systemPrompt: string | null; summary: string | null }
+export type AiWorldSettings = {
+  memory: string | null
+  systemPrompt: string | null
+  postHistory: string | null
+  summary: string | null
+}
 
 /**
  * Controls for AI-played characters: who replies, as which persona, and the
@@ -42,12 +47,24 @@ export default function AiBar({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [preview, setPreview] = useState<{ name: string; result: PromptPreview } | null>(null)
   const ai = cast.filter((c) => c.aiEnabled)
 
   const toggle = async (c: AiCastMember) => {
     setBusy(c.id)
     try {
       await setCharacterAi(worldId, c.id, !c.aiEnabled)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const showPreview = async (c: AiCastMember) => {
+    setBusy(`preview-${c.id}`)
+    try {
+      setPreview({ name: c.name, result: await previewPrompt(worldId, c.id, personaId) })
+    } catch {
+      setPreview({ name: c.name, result: { ok: false, error: "Could not build the preview." } })
     } finally {
       setBusy(null)
     }
@@ -144,7 +161,19 @@ export default function AiBar({
             <ul className="divide-y divide-line rounded-xl border border-line">
               {cast.map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <span className="truncate text-sm">{c.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{c.name}</span>
+                  {c.aiEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => void showPreview(c)}
+                      disabled={busy !== null}
+                      title="See exactly what the AI would be sent, without sending it"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted hover:bg-elevated hover:text-ink disabled:opacity-50"
+                    >
+                      {busy === `preview-${c.id}` ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+                      Preview prompt
+                    </button>
+                  )}
                   <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
                     {busy === c.id && <Loader2 size={12} className="animate-spin" />}
                     AI plays
@@ -160,6 +189,47 @@ export default function AiBar({
               ))}
             </ul>
           </section>
+
+          {preview && (
+            <section className="space-y-2 rounded-xl border border-line bg-canvas/60 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">Next prompt for {preview.name}</div>
+                <button type="button" onClick={() => setPreview(null)} aria-label="Close preview" className="text-muted hover:text-ink">
+                  <X size={14} />
+                </button>
+              </div>
+              {preview.result.ok ? (
+                <>
+                  <div className="text-[11px] text-muted">{preview.result.model} · rough token counts</div>
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {preview.result.sections.map((s) => (
+                        <tr key={s.title} className="border-b border-line/50">
+                          <td className="py-1 pr-2 text-ink/90">{s.title}</td>
+                          <td className="py-1 text-right tabular-nums text-muted">{s.tokens.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td className="py-1 pr-2 font-semibold">Total</td>
+                        <td className="py-1 text-right font-semibold tabular-nums">
+                          ~{preview.result.totalTokens.toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-accent-soft">Show the full prompt</summary>
+                    <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-surface p-2 font-mono text-[11px] leading-relaxed text-ink/85">
+                      {`SYSTEM\n${preview.result.system}\n\n` +
+                        preview.result.messages.map((m) => `${m.role.toUpperCase()}\n${m.content}`).join("\n\n")}
+                    </pre>
+                  </details>
+                </>
+              ) : (
+                <p className="text-xs text-red-400">{preview.result.error}</p>
+              )}
+            </section>
+          )}
 
           <Link
             href={`/worlds/${worldId}/lore`}
@@ -200,6 +270,20 @@ export default function AiBar({
                 maxLength={6000}
                 defaultValue={settings.summary ?? ""}
                 placeholder="Nothing yet. It appears once the story is long enough to need it."
+                className="mt-1.5 block w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm placeholder-muted focus:border-accent focus:outline-none"
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              After-history note
+              <span className="mt-0.5 block text-xs font-normal text-muted">
+                Sent right after the chat, just before the AI writes: the strongest spot for a standing reminder.
+              </span>
+              <textarea
+                name="postHistory"
+                rows={2}
+                maxLength={2000}
+                defaultValue={settings.postHistory ?? ""}
+                placeholder="Keep replies under 150 words. Show, don't tell."
                 className="mt-1.5 block w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm placeholder-muted focus:border-accent focus:outline-none"
               />
             </label>

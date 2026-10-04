@@ -27,6 +27,8 @@ export default async function SettingsPage() {
       keyHint: true,
       temperature: true,
       maxTokens: true,
+      topP: true,
+      contextTokens: true,
       isDefault: true,
     },
   })
@@ -103,7 +105,7 @@ export default async function SettingsPage() {
                     {world._count.messages} messages
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   {/* Plain links, so the browser downloads them directly. */}
                   <a
                     href={`/api/worlds/${world.id}/export?format=json`}
@@ -111,12 +113,19 @@ export default async function SettingsPage() {
                   >
                     JSON
                   </a>
-                  <a
-                    href={`/api/worlds/${world.id}/export?format=html`}
-                    className="rounded-lg border border-line bg-elevated px-4 py-2 text-xs font-semibold text-white hover:bg-elevated"
-                  >
-                    HTML
-                  </a>
+                  {[
+                    ["html", "HTML"],
+                    ["md", "Markdown"],
+                    ["txt", "Text"],
+                  ].map(([format, label]) => (
+                    <a
+                      key={format}
+                      href={`/api/worlds/${world.id}/export?format=${format}`}
+                      className="rounded-lg border border-line bg-elevated px-4 py-2 text-xs font-semibold text-white hover:bg-elevated"
+                    >
+                      {label}
+                    </a>
+                  ))}
                 </div>
               </li>
             ))}

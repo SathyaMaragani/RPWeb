@@ -147,6 +147,7 @@ try {
         inviteCode: world.inviteCode,
         memory: world.memory,
         systemPrompt: world.systemPrompt,
+        postHistory: world.postHistory,
         summary: world.summary,
         createdAt: world.createdAt.toISOString(),
       },
